@@ -139,7 +139,8 @@ public class EntityMatcher
 
     public static class Builder<T> implements Observer
     {
-        private String select;
+        private Class<?> retType;
+        private boolean isNative = false;
         private final Stack<Capture> captures = new Stack<Capture>();
         private final Set<String> tableNames = new LinkedHashSet<String>();
         private final ParameterBinding params = new JpqlBinding(); 
@@ -156,7 +157,7 @@ public class EntityMatcher
             tableNames.add(EntityMatcher.proxy2Class.get(main.getClass()).getSimpleName());
             Arrays.asList(others).forEach(o -> tableNames.add(EntityMatcher.proxy2Class.get(o.getClass()).getSimpleName()));
 
-            select = "SELECT ".concat(toAlias(EntityMatcher.proxy2Class.get(main.getClass()).getSimpleName()));
+            retType = EntityMatcher.proxy2Class.get(main.getClass());
         }
 
         public <E> StatementComposer match(E getter, LhsRhsStatement<? extends E> statement)
@@ -235,7 +236,7 @@ public class EntityMatcher
         @Override
         public String toString()
         {
-            return select.toString();
+            return "SELECT ".concat(toAlias(retType.getSimpleName()));
         }
 
         class StatementComposer
@@ -247,6 +248,12 @@ public class EntityMatcher
                 statements = Lists.newArrayList(statement);
             }
 
+            public StatementComposer nativeQuery(boolean b)
+            {
+                isNative = b;
+                return this;
+            }
+            
             public <E> StatementComposer and(E getter, LhsRhsStatement<E> statement)
             {
                 return and(statement);
@@ -283,7 +290,7 @@ public class EntityMatcher
                 return this;
             }
 
-            public PreparedQuery<T> build(boolean isNative)
+            public PreparedQuery<T> build()
             {
                 return new PreparedQuery<T>()
                 {
@@ -319,6 +326,8 @@ public class EntityMatcher
 
             private String composeStringQuery()
             {
+                final String select = composeSelect();
+                
                 if (statements.isEmpty())
                     return select;
 
@@ -378,6 +387,17 @@ public class EntityMatcher
                 // remove last FROM unnecessary comma.
                 fromClause.replace(fromClause.length() - 2, fromClause.length(), "");
                 return new StringBuilder(select).append(fromClause).append(whereClause).toString();
+            }
+
+            private String composeSelect()
+            {
+                return isNative ? createNativeSelect() : "SELECT ".concat(toAlias(retType.getSimpleName()));
+            }
+
+            private String createNativeSelect()
+            {
+                // TODO (this needs some byte code to ensure the declaration order of the columns)
+                throw new UnsupportedOperationException("Not implemented.");
             }
         }
     }
