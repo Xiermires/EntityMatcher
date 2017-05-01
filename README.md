@@ -1,6 +1,6 @@
 # EntityMatcher
 
-Create JPQL queries through matching Entity classes in hamcrest like statements.
+Create JPQL queries through matching Entity classes in the "hamcrest way".
 
 The matcher user can extend the functionality with its own statements (created in similar fashion as in the Statements class).
 
@@ -9,6 +9,7 @@ TODOs :
 * Native query support
 * Flexible return types
 * Allow nesting classes
+* Static #match(T, Statement<T> matcher)
 
 -------------
 Examples
