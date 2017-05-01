@@ -21,6 +21,7 @@
  *******************************************************************************/
 package org.entitymatcher;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
@@ -41,8 +42,10 @@ import javassist.util.proxy.MethodHandler;
 import javassist.util.proxy.ProxyFactory;
 import javassist.util.proxy.ProxyObject;
 
+import javax.persistence.Column;
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
+import javax.persistence.Transient;
 
 import com.google.common.collect.Lists;
 
@@ -140,10 +143,10 @@ public class EntityMatcher
     public static class Builder<T> implements Observer
     {
         private Class<?> retType;
-        private boolean isNative = false;
+        private boolean isNativeQuery = false;
         private final Stack<Capture> captures = new Stack<Capture>();
         private final Set<String> tableNames = new LinkedHashSet<String>();
-        private final ParameterBinding params = new JpqlBinding(); 
+        private final ParameterBinding params = new JpqlBinding();
 
         Builder(T main, Object... others)
         {
@@ -200,9 +203,28 @@ public class EntityMatcher
             final Matcher matcher = isGetter.matcher(m.getName());
             if (matcher.matches())
             {
-                return matcher.group(2).toLowerCase();
+                final String fieldName = matcher.group(2).substring(0, 1).toLowerCase().concat(matcher.group(2).substring(1));
+                return isNativeQuery ? getColumnName(getField(m.getDeclaringClass(), fieldName)) : fieldName;
             }
             throw new RuntimeException("Not a getter '" + m.getName() + "'");
+        }
+
+        private Field getField(Class<?> type, String name)
+        {
+            try
+            {
+                return type.getDeclaredField(name);
+            }
+            catch (NoSuchFieldException | SecurityException e)
+            {
+                throw new RuntimeException(type.getName() + "doesn't follow the java beans convention for field: " + name);
+            }
+        }
+
+        private String getColumnName(Field f)
+        {
+            final Column c = f.getAnnotation(Column.class);
+            return c == null || c.name().isEmpty() ? f.getName() : c.name();
         }
 
         Capture getLastCapture()
@@ -250,10 +272,10 @@ public class EntityMatcher
 
             public StatementComposer nativeQuery(boolean b)
             {
-                isNative = b;
+                isNativeQuery = b;
                 return this;
             }
-            
+
             public <E> StatementComposer and(E getter, LhsRhsStatement<E> statement)
             {
                 return and(statement);
@@ -298,14 +320,14 @@ public class EntityMatcher
                     @SuppressWarnings("unchecked")
                     public T getSingleMatching(EntityManager em)
                     {
-                        return (T) createQuery(em, isNative).getSingleResult();
+                        return (T) createQuery(em, isNativeQuery).getSingleResult();
                     }
 
                     @Override
                     @SuppressWarnings("unchecked")
                     public List<T> getMatching(EntityManager em)
                     {
-                        return createQuery(em, isNative).getResultList();
+                        return createQuery(em, isNativeQuery).getResultList();
                     }
 
                     private Query createQuery(EntityManager em, boolean isNative)
@@ -327,7 +349,7 @@ public class EntityMatcher
             private String composeStringQuery()
             {
                 final String select = composeSelect();
-                
+
                 if (statements.isEmpty())
                     return select;
 
@@ -379,7 +401,8 @@ public class EntityMatcher
                         }
 
                         // Add WHERE conditions
-                        whereClause.append(Statement.toString(next.statement.toJpql(toAlias(lhsTableName), getColumnName(next.lhs),
+                        whereClause.append(Statement.toString(next.statement.toJpql(toAlias(lhsTableName),
+                                getColumnName(next.lhs),
                                 toAlias(rhsTableName), getColumnName(next.rhs), params)));
                     }
                 }
@@ -391,13 +414,26 @@ public class EntityMatcher
 
             private String composeSelect()
             {
-                return isNative ? createNativeSelect() : "SELECT ".concat(toAlias(retType.getSimpleName()));
+                return isNativeQuery ? createNativeSelect() : "SELECT ".concat(toAlias(retType.getSimpleName()));
             }
 
             private String createNativeSelect()
             {
-                // TODO (this needs some byte code to ensure the declaration order of the columns)
-                throw new UnsupportedOperationException("Not implemented.");
+                final StringBuilder sb = new StringBuilder("SELECT ");
+
+                // We can use reflection since calls are deterministic (even when it is not
+                // guaranteed they follow the declaration order)
+                for (Field f : retType.getDeclaredFields())
+                {
+                    if (f.isAnnotationPresent(Transient.class))
+                        continue;
+
+                    final String name = getColumnName(f);
+                    sb.append(name).append(", ");
+                }
+
+                sb.replace(sb.length() - 2, sb.length(), "");
+                return sb.toString();
             }
         }
     }

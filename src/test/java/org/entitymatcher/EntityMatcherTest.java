@@ -181,6 +181,16 @@ public class EntityMatcherTest
     }
 
     @Test
+    public void testNative()
+    {
+        final TestClass tc = EntityMatcher.matcher(TestClass.class);
+        final Builder<TestClass> builder = EntityMatcher.builder(tc);
+
+        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), like("Hell%").or(like("By%"))).nativeQuery(true).build();
+        assertThat(query.getMatching(em).size(), is(2));
+    }
+    
+    @Test
     @Ignore
     public void trySignatures()
     {
