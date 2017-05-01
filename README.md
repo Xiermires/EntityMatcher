@@ -4,9 +4,10 @@ Create JPQL queries through matching Entity classes in the "hamcrest way".
 
 The matcher user can extend the functionality with its own statements (created in similar fashion as in the Statements class).
 
+By default it translates the queries into JPQL. Native SQL support can be enabled by calling the #nativeQuery(true) method.
+
 TODOs :
 
-* Native query support
 * Flexible return types
 * Allow nesting classes
 * Static #match(T, Statement<T> matcher)
