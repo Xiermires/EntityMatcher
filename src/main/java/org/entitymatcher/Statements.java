@@ -22,47 +22,95 @@
 package org.entitymatcher;
 
 import java.util.Collection;
+import java.util.List;
+
+import org.entitymatcher.Statement.Negatable;
+import org.entitymatcher.Statement.Part;
 
 public class Statements
 {
+    enum Connector implements Negatable
+    {
+        LIKE(" LIKE ", " NOT LIKE "), EQ(" = ", " != "), GT(" > ", " < "), LT(" < ", " > "), IN(" IN ", " NOT IN ");
+
+        final String affirmed;
+        final String negated;
+
+        boolean isNegated;
+        String conn;
+
+        Connector(String affirmed, String negated)
+        {
+            this.affirmed = this.conn = affirmed;
+            this.negated = negated;
+            this.isNegated = false;
+        }
+
+        @Override
+        public void negate()
+        {
+            conn = isNegated ? affirmed : negated;
+        }
+
+        @Override
+        public String toString()
+        {
+            return conn;
+        }
+    }
+
     private Statements()
     {
     }
 
     public static <T> LhsStatement<T> like(T t)
     {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> tableColumn(lhsTable, lhsColumn)
-                + " LIKE " + valueOf(t));
+        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Statement.create(
+                tableColumn(lhsTable, lhsColumn),
+                Connector.LIKE, valueOf(t)));
     }
 
     public static <T> LhsStatement<T> eq(T t)
     {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> tableColumn(lhsTable, lhsColumn)
-                + " = " + valueOf(t));
+        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Statement.create(
+                tableColumn(lhsTable, lhsColumn),
+                Connector.EQ, valueOf(t)));
     }
-    
+
     public static <T> LhsStatement<T> gt(T t)
     {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> tableColumn(lhsTable, lhsColumn) + " > "
-                + valueOf(t));
+        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Statement.create(
+                tableColumn(lhsTable, lhsColumn), Connector.GT, valueOf(t)));
     }
-    
+
     public static <T> LhsStatement<T> lt(T t)
     {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> tableColumn(lhsTable, lhsColumn) + " < "
-                + valueOf(t));
+        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Statement.create(
+                tableColumn(lhsTable, lhsColumn), Connector.LT,
+                valueOf(t)));
     }
 
     public static <T> LhsStatement<T> in(Collection<T> ts)
     {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> tableColumn(lhsTable, lhsColumn)
-                + " IN " + params.bind(ts));
+        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Statement.create(
+                tableColumn(lhsTable, lhsColumn), Connector.IN, params.bind(ts)));
     }
 
     public static <T> LhsRhsStatement<T> join(T getter)
     {
-        return new LhsRhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> tableColumn(lhsTable, lhsColumn)
-                + " = " + tableColumn(rhsTable, rhsColumn), false);
+        return new LhsRhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Statement.create(
+                tableColumn(lhsTable, lhsColumn), Connector.EQ, tableColumn(rhsTable, rhsColumn)), false);
+    }
+
+    public static <T> LhsStatement<T> not(LhsStatement<T> st)
+    {
+        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) ->
+        {
+            final List<Part> parts = st.toJpql(lhsTable, lhsColumn, rhsTable, rhsColumn, params);
+            for (Part part : parts)
+                part.conn.negate();
+            return parts;
+        });
     }
 
     static String tableColumn(String table, String column)

@@ -27,6 +27,7 @@ import static org.entitymatcher.Statements.in;
 import static org.entitymatcher.Statements.join;
 import static org.entitymatcher.Statements.like;
 import static org.entitymatcher.Statements.lt;
+import static org.entitymatcher.Statements.not;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
@@ -84,6 +85,16 @@ public class EntityMatcherTest
         final PreparedQuery<TestClass> query = builder.match(tc.getBar(), like("Hell%")).build(false);
         assertThat(query.getMatching(em).size(), is(1));
     }
+    
+    @Test
+    public void testNotLike()
+    {
+        final TestClass tc = EntityMatcher.matcher(TestClass.class);
+        final Builder<TestClass> builder = EntityMatcher.builder(tc);
+
+        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), not(like("Hell%"))).build(false);
+        assertThat(query.getMatching(em).size(), is(2));
+    }
 
     @Test
     public void testGreaterThan()
@@ -93,6 +104,16 @@ public class EntityMatcherTest
 
         final PreparedQuery<TestClass> query = builder.match(tc.getFoo(), gt(4)).build(false);
         assertThat(query.getMatching(em).size(), is(2));
+    }
+    
+    @Test
+    public void testNotGreaterThan()
+    {
+        final TestClass tc = EntityMatcher.matcher(TestClass.class);
+        final Builder<TestClass> builder = EntityMatcher.builder(tc);
+
+        final PreparedQuery<TestClass> query = builder.match(tc.getFoo(), not(gt(4))).build(false);
+        assertThat(query.getMatching(em).size(), is(1));
     }
 
     @Test

@@ -21,7 +21,53 @@
  *******************************************************************************/
 package org.entitymatcher;
 
+import java.util.List;
+
+import com.google.common.collect.Lists;
+
 public interface Statement
 {
-    String toJpql(String lhsTableAlias, String lhsColumn, String rhsTableAlias, String rhsColumn, ParameterBinding params);
+    List<Part> toJpql(String lhsTableAlias, String lhsColumn, String rhsTableAlias, String rhsColumn, ParameterBinding params);
+
+    public static List<Part> create(String lhs, Negatable conn, String rhs)
+    {
+        return Lists.newArrayList(new Part(lhs, conn, rhs));
+    }
+
+    public static String toString(List<Part> parts)
+    {
+        final StringBuilder sb = new StringBuilder();
+        for (Part part : parts)
+            sb.append(toString(part));
+        return sb.toString();
+    }
+
+    public static String toString(Part part)
+    {
+        return part.lhs + part.conn.toString() + part.rhs;
+    }
+
+    public static class Part
+    {
+        final String lhs;
+        final Negatable conn;
+        final String rhs;
+
+        Part(String lhs, Negatable conn, String rhs)
+        {
+            this.lhs = lhs;
+            this.conn = conn;
+            this.rhs = rhs;
+        }
+    }
+
+    /**
+     * Negates an expression.
+     * <p>
+     * The query string uses its {@link #toString()} representation.
+     */
+    public static interface Negatable
+    {
+        void negate();
+    }
 }

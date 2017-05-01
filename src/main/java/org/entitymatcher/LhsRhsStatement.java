@@ -21,6 +21,8 @@
  *******************************************************************************/
 package org.entitymatcher;
 
+import java.util.List;
+
 /**
  * This class represents a statement that takes two tables and two columns.
  * <p>
@@ -43,7 +45,7 @@ public class LhsRhsStatement<T> implements Statement
     }
     
     @Override
-    public String toJpql(String lhsTable, String lhsColumn, String rhsTable, String rhsColumn, ParameterBinding params)
+    public List<Part> toJpql(String lhsTable, String lhsColumn, String rhsTable, String rhsColumn, ParameterBinding params)
     {
         return statement.toJpql(lhsTable, lhsColumn, rhsTable, rhsColumn, params);
     }

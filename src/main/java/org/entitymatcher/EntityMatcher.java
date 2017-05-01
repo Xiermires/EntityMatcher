@@ -370,8 +370,8 @@ public class EntityMatcher
                         }
 
                         // Add WHERE conditions
-                        whereClause.append(next.statement.toJpql(toAlias(lhsTableName), getColumnName(next.lhs),
-                                toAlias(rhsTableName), getColumnName(next.rhs), params));
+                        whereClause.append(Statement.toString(next.statement.toJpql(toAlias(lhsTableName), getColumnName(next.lhs),
+                                toAlias(rhsTableName), getColumnName(next.rhs), params)));
                     }
                 }
 

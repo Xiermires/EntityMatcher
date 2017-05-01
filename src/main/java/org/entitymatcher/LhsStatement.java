@@ -21,6 +21,11 @@
  *******************************************************************************/
 package org.entitymatcher;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import com.google.common.collect.Lists;
+
 /**
  * This class represents a statement that takes only one table and column.
  * <p>
@@ -70,16 +75,29 @@ public class LhsStatement<T> extends LhsRhsStatement<T>
     }
 
     @Override
-    public String toJpql(String lhsTable, String lhsColumn, String rhsTable, String rhsColumn, ParameterBinding params)
+    public List<Part> toJpql(String lhsTable, String lhsColumn, String rhsTable, String rhsColumn, ParameterBinding params)
     {
-        final StringBuilder sb = new StringBuilder();
+        final List<Part> l = new ArrayList<Part>();
         for (Statement st : statements)
         {
-            sb.append(st.toJpql(lhsTable, lhsColumn, rhsTable, rhsColumn, params));
+            l.addAll(st.toJpql(lhsTable, lhsColumn, rhsTable, rhsColumn, params));
         }
-        return sb.toString();
+        return l;
     }
 
-    public static final LhsStatement<?> or = new LhsStatement<Object>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> " OR ");
-    public static final LhsStatement<?> and = new LhsStatement<Object>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> " AND ");
+    // Ignore OR / AND negation
+    enum Connector implements Negatable
+    {
+        OR, AND;
+
+        @Override
+        public void negate()
+        {
+        }
+    }
+
+    public static final LhsStatement<?> or = new LhsStatement<Object>(
+            (lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Lists.newArrayList(Statement.create(" ", Connector.OR, " ")));
+    public static final LhsStatement<?> and = new LhsStatement<Object>(
+            (lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Lists.newArrayList(Statement.create(" ", Connector.AND, " ")));
 }
