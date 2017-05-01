@@ -283,7 +283,7 @@ public class EntityMatcher
                 return this;
             }
 
-            public PreparedQuery<T> build()
+            public PreparedQuery<T> build(boolean isNative)
             {
                 return new PreparedQuery<T>()
                 {
@@ -291,20 +291,20 @@ public class EntityMatcher
                     @SuppressWarnings("unchecked")
                     public T getSingleMatching(EntityManager em)
                     {
-                        return (T) createQuery(em).getSingleResult();
+                        return (T) createQuery(em, isNative).getSingleResult();
                     }
 
                     @Override
                     @SuppressWarnings("unchecked")
                     public List<T> getMatching(EntityManager em)
                     {
-                        return createQuery(em).getResultList();
+                        return createQuery(em, isNative).getResultList();
                     }
 
-                    private Query createQuery(EntityManager em)
+                    private Query createQuery(EntityManager em, boolean isNative)
                     {
                         final String queryString = composeStringQuery();
-                        final Query query = em.createQuery(queryString);
+                        final Query query = isNative ? em.createNativeQuery(queryString) : em.createQuery(queryString);
                         params.solveQuery(queryString, query);
                         return query;
                     }

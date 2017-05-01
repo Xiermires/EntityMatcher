@@ -81,7 +81,7 @@ public class EntityMatcherTest
         final TestClass tc = EntityMatcher.matcher(TestClass.class);
         final Builder<TestClass> builder = EntityMatcher.builder(tc);
 
-        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), like("Hell%")).build();
+        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), like("Hell%")).build(false);
         assertThat(query.getMatching(em).size(), is(1));
     }
 
@@ -91,7 +91,7 @@ public class EntityMatcherTest
         final TestClass tc = EntityMatcher.matcher(TestClass.class);
         final Builder<TestClass> builder = EntityMatcher.builder(tc);
 
-        final PreparedQuery<TestClass> query = builder.match(tc.getFoo(), gt(4)).build();
+        final PreparedQuery<TestClass> query = builder.match(tc.getFoo(), gt(4)).build(false);
         assertThat(query.getMatching(em).size(), is(2));
     }
 
@@ -101,7 +101,7 @@ public class EntityMatcherTest
         final TestClass tc = EntityMatcher.matcher(TestClass.class);
         final Builder<TestClass> builder = EntityMatcher.builder(tc);
 
-        final PreparedQuery<TestClass> query = builder.match(tc.getFoo(), lt(4)).build();
+        final PreparedQuery<TestClass> query = builder.match(tc.getFoo(), lt(4)).build(false);
         assertThat(query.getMatching(em).size(), is(1));
     }
 
@@ -111,7 +111,7 @@ public class EntityMatcherTest
         final TestClass tc = EntityMatcher.matcher(TestClass.class);
         final Builder<TestClass> builder = EntityMatcher.builder(tc);
 
-        final PreparedQuery<TestClass> query = builder.match(tc.getFoo(), lt(4)).and(tc.getBar(), eq("Bye")).build();
+        final PreparedQuery<TestClass> query = builder.match(tc.getFoo(), lt(4)).and(tc.getBar(), eq("Bye")).build(false);
         assertThat(query.getMatching(em).size(), is(1));
     }
 
@@ -121,7 +121,7 @@ public class EntityMatcherTest
         final TestClass tc = EntityMatcher.matcher(TestClass.class);
         final Builder<TestClass> builder = EntityMatcher.builder(tc);
 
-        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), eq("Hello").or(eq("Bye"))).build();
+        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), eq("Hello").or(eq("Bye"))).build(false);
         assertThat(query.getMatching(em).size(), is(2));
     }
 
@@ -132,7 +132,7 @@ public class EntityMatcherTest
         final TestJoin tj = EntityMatcher.matcher(TestJoin.class);
         final Builder<TestClass> builder = EntityMatcher.builder(tc, tj);
 
-        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), join(tj.getBar())).build();
+        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), join(tj.getBar())).build(false);
         assertThat(query.getMatching(em).size(), is(2));
     }
 
@@ -145,7 +145,7 @@ public class EntityMatcherTest
         final Builder<TestClass> builder = EntityMatcher.builder(tc, tj, to);
 
         final PreparedQuery<TestClass> query = builder.match(tc.getBar(), join(tj.getBar())).and(tj.getBar(), join(to.getBar()))
-                .build();
+                .build(false);
         assertThat(query.getMatching(em).size(), is(1));
     }
     
@@ -155,7 +155,7 @@ public class EntityMatcherTest
         final TestClass tc = EntityMatcher.matcher(TestClass.class);
         final Builder<TestClass> builder = EntityMatcher.builder(tc);
 
-        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), in(Arrays.asList("Hello", "Bye"))).build();
+        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), in(Arrays.asList("Hello", "Bye"))).build(false);
         assertThat(query.getMatching(em).size(), is(2));
     }
 
