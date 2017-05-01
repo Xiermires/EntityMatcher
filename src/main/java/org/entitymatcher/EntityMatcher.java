@@ -432,6 +432,7 @@ public class EntityMatcher
                     sb.append(name).append(", ");
                 }
 
+                // remove last unnecessary comma.
                 sb.replace(sb.length() - 2, sb.length(), "");
                 return sb.toString();
             }
