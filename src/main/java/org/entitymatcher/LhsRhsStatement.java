@@ -29,27 +29,27 @@ package org.entitymatcher;
  * The table alias, as well as the column are passed to the
  * {@link #toJpql(String, String, String, String)} via lhs / rhs args.
  */
-public class LhsRhsStatement<T> implements JpqlStatement
+public class LhsRhsStatement<T> implements Statement
 {
-    private final JpqlStatement statement;
+    private final Statement statement;
 
     // Identifies INNER / OUTER / FETCH joins which must be placed in the FROM clause (see JPA 2.0 specification). 
-    private final boolean relationship; 
+    private final boolean joinRelationship; 
     
-    public LhsRhsStatement(JpqlStatement statement, boolean relationship)
+    public LhsRhsStatement(Statement statement, boolean relationship)
     {
         this.statement = statement;
-        this.relationship = relationship;
+        this.joinRelationship = relationship;
     }
     
     @Override
-    public String toJpql(String lhsTable, String lhsColumn, String rhsTable, String rhsColumn)
+    public String toJpql(String lhsTable, String lhsColumn, String rhsTable, String rhsColumn, ParameterBinding params)
     {
-        return statement.toJpql(lhsTable, lhsColumn, rhsTable, rhsColumn);
+        return statement.toJpql(lhsTable, lhsColumn, rhsTable, rhsColumn, params);
     }
 
     protected boolean isJoinRelationship()
     {
-        return relationship;
+        return joinRelationship;
     }
 }

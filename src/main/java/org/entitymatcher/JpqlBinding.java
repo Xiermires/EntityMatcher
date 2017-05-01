@@ -21,7 +21,50 @@
  *******************************************************************************/
 package org.entitymatcher;
 
-public interface JpqlStatement
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.persistence.Query;
+
+/**
+ * This class binds jpql parameters for a single query and stores the parameters for later solving.
+ */
+class JpqlBinding implements ParameterBinding
 {
-    String toJpql(String lhsTableAlias, String lhsColumn, String rhsTableAlias, String rhsColumn);
+    private int suffix;
+    final List<Object> l = new ArrayList<Object>();
+
+    @Override
+    public String bind(Object o)
+    {
+        if (o == null)
+            return " IS NULL";
+
+        l.add(o);
+        return "?" + suffix++;
+    }
+
+    private final Pattern jpql = Pattern.compile("\\?(\\d+)");
+
+    @Override
+    public String solveQuery(String rawQuery, Query query)
+    {
+        final Matcher matcher = jpql.matcher(rawQuery);
+        final StringBuffer sb = new StringBuffer();
+        final Iterator<Object> it = l.iterator();
+        int s = 0;
+        while (matcher.find())
+        {
+            assert it.hasNext() : "bad param binding";
+            final String key = matcher.group(1);
+            final Object value = it.next();
+
+            query.setParameter(Integer.valueOf(key), value);
+        }
+        sb.append(rawQuery.substring(s));
+        return sb.toString();
+    }
 }

@@ -35,15 +35,15 @@ package org.entitymatcher;
  */
 public class LhsStatement<T> extends LhsRhsStatement<T>
 {
-    private final JpqlStatement[] statements;
+    private final Statement[] statements;
 
-    public LhsStatement(JpqlStatement statement)
+    public LhsStatement(Statement statement)
     {
         super(null, false);
-        this.statements = new JpqlStatement[] { statement };
+        this.statements = new Statement[] { statement };
     }
 
-    private LhsStatement(JpqlStatement... statements)
+    private LhsStatement(Statement... statements)
     {
         super(null, false);
         this.statements = statements;
@@ -51,7 +51,7 @@ public class LhsStatement<T> extends LhsRhsStatement<T>
 
     public LhsStatement<T> or(LhsStatement<T> st)
     {
-        final JpqlStatement[] composition = new JpqlStatement[statements.length + 2];
+        final Statement[] composition = new Statement[statements.length + 2];
         System.arraycopy(statements, 0, composition, 0, statements.length);
         composition[composition.length - 2] = or;
         composition[composition.length - 1] = st;
@@ -61,7 +61,7 @@ public class LhsStatement<T> extends LhsRhsStatement<T>
 
     public LhsStatement<T> and(LhsStatement<T> st)
     {
-        final JpqlStatement[] composition = new JpqlStatement[statements.length + 2];
+        final Statement[] composition = new Statement[statements.length + 2];
         System.arraycopy(statements, 0, composition, 0, statements.length);
         composition[composition.length - 2] = and;
         composition[composition.length - 1] = st;
@@ -70,16 +70,16 @@ public class LhsStatement<T> extends LhsRhsStatement<T>
     }
 
     @Override
-    public String toJpql(String lhsTable, String lhsColumn, String rhsTable, String rhsColumn)
+    public String toJpql(String lhsTable, String lhsColumn, String rhsTable, String rhsColumn, ParameterBinding params)
     {
         final StringBuilder sb = new StringBuilder();
-        for (JpqlStatement st : statements)
+        for (Statement st : statements)
         {
-            sb.append(st.toJpql(lhsTable, lhsColumn, rhsTable, rhsColumn));
+            sb.append(st.toJpql(lhsTable, lhsColumn, rhsTable, rhsColumn, params));
         }
         return sb.toString();
     }
 
-    public static final LhsStatement<?> or = new LhsStatement<Object>((lhsTable, lhsColumn, rhsTable, rhsColumn) -> " OR ");
-    public static final LhsStatement<?> and = new LhsStatement<Object>((lhsTable, lhsColumn, rhsTable, rhsColumn) -> " AND ");
+    public static final LhsStatement<?> or = new LhsStatement<Object>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> " OR ");
+    public static final LhsStatement<?> and = new LhsStatement<Object>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> " AND ");
 }

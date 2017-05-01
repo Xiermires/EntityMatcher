@@ -42,6 +42,7 @@ import javassist.util.proxy.ProxyFactory;
 import javassist.util.proxy.ProxyObject;
 
 import javax.persistence.EntityManager;
+import javax.persistence.Query;
 
 import com.google.common.collect.Lists;
 
@@ -50,7 +51,7 @@ public class EntityMatcher
     static final Map<Class<?>, Class<?>> proxy2Class = new ConcurrentHashMap<Class<?>, Class<?>>();
 
     /**
-     * Returns an instance of a class which might be used to match {@link JpqlStatements}.
+     * Returns an instance of a class which might be used to match {@link Statements}.
      */
     @SuppressWarnings("unchecked")
     public static <T> T matcher(Class<T> clazz)
@@ -76,6 +77,8 @@ public class EntityMatcher
      * Returns a builder which listens to the provided classes.
      * <p>
      * The main class also determines the return method of the query.
+     * <p>
+     * Instances of this class are not thread safe.
      */
     public static <T> Builder<T> builder(T main, Object... others)
     {
@@ -139,6 +142,7 @@ public class EntityMatcher
         private String select;
         private final Stack<Capture> captures = new Stack<Capture>();
         private final Set<String> tableNames = new LinkedHashSet<String>();
+        private final ParameterBinding params = new JpqlBinding(); 
 
         Builder(T main, Object... others)
         {
@@ -287,14 +291,22 @@ public class EntityMatcher
                     @SuppressWarnings("unchecked")
                     public T getSingleMatching(EntityManager em)
                     {
-                        return (T) em.createQuery(composeStringQuery()).getSingleResult();
+                        return (T) createQuery(em).getSingleResult();
                     }
 
                     @Override
                     @SuppressWarnings("unchecked")
                     public List<T> getMatching(EntityManager em)
                     {
-                        return em.createQuery(composeStringQuery()).getResultList();
+                        return createQuery(em).getResultList();
+                    }
+
+                    private Query createQuery(EntityManager em)
+                    {
+                        final String queryString = composeStringQuery();
+                        final Query query = em.createQuery(queryString);
+                        params.solveQuery(queryString, query);
+                        return query;
                     }
                 };
             }
@@ -335,7 +347,7 @@ public class EntityMatcher
                     {
                         final String lhsTableName = getTableName(next.lhs);
                         fromClause.append(next.statement.toJpql(toAlias(lhsTableName), getColumnName(next.lhs),
-                                toAlias(getTableName(next.rhs)), getColumnName(next.rhs))).append(", ");
+                                toAlias(getTableName(next.rhs)), getColumnName(next.rhs), params)).append(", ");
 
                         // lhsTableName has been assigned an alias in the FROM clause
                         unaliasedTables.remove(lhsTableName);
@@ -359,7 +371,7 @@ public class EntityMatcher
 
                         // Add WHERE conditions
                         whereClause.append(next.statement.toJpql(toAlias(lhsTableName), getColumnName(next.lhs),
-                                toAlias(rhsTableName), getColumnName(next.rhs)));
+                                toAlias(rhsTableName), getColumnName(next.rhs), params));
                     }
                 }
 

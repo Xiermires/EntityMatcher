@@ -21,41 +21,7 @@
  *******************************************************************************/
 package org.entitymatcher;
 
-public class JpqlStatements
+public interface Statement
 {
-    private JpqlStatements() {}
-    
-    public static <T> LhsStatement<T> like(T t)
-    {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn) -> tableColumn(lhsTable, lhsColumn) + " LIKE " + valueOf(t));
-    }
-    
-    public static <T> LhsStatement<T> gt(T t)
-    {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn) -> tableColumn(lhsTable, lhsColumn) + " > " + valueOf(t));
-    }
-    
-    public static <T> LhsStatement<T> lt(T t)
-    {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn) -> tableColumn(lhsTable, lhsColumn) + " < " + valueOf(t));
-    }
-    
-    public static <T> LhsRhsStatement<T> join(T getter)
-    {
-        return new LhsRhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn) -> tableColumn(lhsTable, lhsColumn) + " = " + tableColumn(rhsTable, rhsColumn), false);
-    }
-    
-    static String tableColumn(String table, String column)
-    {
-        return table.concat(".").concat(column);
-    }
-    
-    static <T> String valueOf(T t)
-    {
-        if (t instanceof String)
-        {
-            return "'" + t + "'";
-        }
-        return String.valueOf(t);
-    }
+    String toJpql(String lhsTableAlias, String lhsColumn, String rhsTableAlias, String rhsColumn, ParameterBinding params);
 }
