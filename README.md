@@ -8,9 +8,7 @@ By default it translates the queries into JPQL. Native SQL support can be enable
 
 TODOs :
 
-* Flexible return types
 * Allow nesting classes
-* Static #match(T, Statement<T> matcher)
 
 -------------
 Examples
@@ -71,6 +69,27 @@ Examples
         final PreparedQuery<TestClass> query = builder.match(tc.getBar(), join(tj.getBar())).build();
         final List<TestClass> tcs = query.getMatching(em);
     }    
+    
+    public void flexibleReturnWrapInJavaBeanWithSameColumnName()
+    {
+        final TestClass tc = EntityMatcher.matcher(TestClass.class);
+        final Builder<TestClass> builder = EntityMatcher.builder(tc);
+
+        final PreparedQuery<TestJoin> query = builder.select(tc.getBar()).match(tc.getBar(), like("Hell%"))
+                .build(TestJoin.class);
+        final TestJoin to = query.getSingleMatching(em);
+    }
+    
+    public void flexibleReturnDirectMapping()
+    {
+        final TestClass tc = EntityMatcher.matcher(TestClass.class);
+        final Builder<TestClass> builder = EntityMatcher.builder(tc);
+
+        final PreparedQuery<String> stringQuery = builder.select(tc.getBar()).match(tc.getBar(), like("Hell%"))
+                .build(String.class);
+        final String bar = stringQuery.getSingleMatching(em);
+    }
+
     
     @Entity
     @Table(name = "TestClass")

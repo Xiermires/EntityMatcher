@@ -186,10 +186,38 @@ public class EntityMatcherTest
         final TestClass tc = EntityMatcher.matcher(TestClass.class);
         final Builder<TestClass> builder = EntityMatcher.builder(tc);
 
-        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), like("Hell%").or(like("By%"))).nativeQuery(true).build();
+        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), like("Hell%").or(like("By%"))).nativeQuery(true)
+                .build();
         assertThat(query.getMatching(em).size(), is(2));
     }
+
+    @Test
+    public void testCustomSelectUsingJavaBean()
+    {
+        final TestClass tc = EntityMatcher.matcher(TestClass.class);
+        final Builder<TestClass> builder = EntityMatcher.builder(tc);
+
+        final PreparedQuery<TestOther> useObjectWithBarProperty = builder.select(tc.getBar()).match(tc.getBar(), like("Hell%"))
+                .build(TestOther.class);
+        final TestOther to = useObjectWithBarProperty.getSingleMatching(em);
+
+        assertThat(to.bar, is("Hello"));
+        assertThat(to.foo, is(0));
+    }
     
+    @Test
+    public void testCustomSelectDirectMapping()
+    {
+        final TestClass tc = EntityMatcher.matcher(TestClass.class);
+        final Builder<TestClass> builder = EntityMatcher.builder(tc);
+
+        final PreparedQuery<String> stringQuery = builder.select(tc.getBar()).match(tc.getBar(), like("Hell%"))
+                .build(String.class);
+        final String bar = stringQuery.getSingleMatching(em);
+        
+        assertThat(bar, is("Hello"));
+    }
+
     @Test
     @Ignore
     public void trySignatures()
@@ -200,7 +228,7 @@ public class EntityMatcherTest
 
         final EntityMatcher.Builder<TestClass>.StatementComposer composer = EntityMatcher.builder(tc, tj, to)
                 .match(tc.getBar(), like("Hello").or(like("Bye"))) //
-                .and(tc.getFoo(), gt(1)) //
+                .and(tc.getBar(), gt(1)) //
                 .and(tc.getBar(), join(tj.getBar())).and(tj.getBar(), join(to.getBar()));
 
         System.out.println(composer.toString());

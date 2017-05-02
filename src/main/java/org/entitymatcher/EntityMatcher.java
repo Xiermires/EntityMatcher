@@ -22,7 +22,9 @@
 package org.entitymatcher;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -45,8 +47,10 @@ import javassist.util.proxy.ProxyObject;
 import javax.persistence.Column;
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
+import javax.persistence.Table;
 import javax.persistence.Transient;
 
+import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 
 public class EntityMatcher
@@ -147,6 +151,7 @@ public class EntityMatcher
         private final Stack<Capture> captures = new Stack<Capture>();
         private final Set<String> tableNames = new LinkedHashSet<String>();
         private final ParameterBinding params = new JpqlBinding();
+        private final List<Capture> customSelect = new ArrayList<Capture>();
 
         Builder(T main, Object... others)
         {
@@ -161,6 +166,27 @@ public class EntityMatcher
             Arrays.asList(others).forEach(o -> tableNames.add(EntityMatcher.proxy2Class.get(o.getClass()).getSimpleName()));
 
             retType = EntityMatcher.proxy2Class.get(main.getClass());
+        }
+
+        /**
+         * Overrides the specified retType T.
+         * <p>
+         * Use : build(instance).select(instance.getBar(),
+         * instance.getFoo()).match(...).build(clazz)
+         * <p>
+         * Where bar and foo are the desired constants and clazz is a java bean with bar and foo
+         * properties.
+         */
+        public Builder<T> select(Object... os)
+        {
+            customSelect.clear(); // doesn't allow incremental selects.
+            for (int i = 0; i < os.length; i++)
+            {
+                final Capture lastCapture = getLastCapture();
+                assert lastCapture == null : "Builders are not thread safe.";
+                customSelect.add(lastCapture);
+            }
+            return this;
         }
 
         public <E> StatementComposer match(E getter, LhsRhsStatement<? extends E> statement)
@@ -190,7 +216,14 @@ public class EntityMatcher
 
         private String getTableName(Method m)
         {
-            return m.getDeclaringClass().getSimpleName();
+            return getTableName(m.getDeclaringClass());
+        }
+
+        private String getTableName(Class<?> clazz)
+        {
+            final Table table = clazz.getAnnotation(Table.class);
+            final String tableName = table == null || table.name().isEmpty() ? clazz.getSimpleName() : table.name();
+            return tableName;
         }
 
         String getColumnName(Capture c)
@@ -340,6 +373,82 @@ public class EntityMatcher
                 };
             }
 
+            public <E> PreparedQuery<E> build(Class<E> clazz)
+            {
+                return new PreparedQuery<E>()
+                {
+                    @SuppressWarnings("unchecked")
+                    private Function<Object[], E> copyProperties = os ->
+                    {
+                        try
+                        {
+                            assert os.length == customSelect.size() : "Request / response column size mismatch.";
+                            
+                            // If length == 1, it could be two options:
+                            // 1. List<Integer> is = ...build(Integer.class).getMatching(em)
+                            // 2. List<Foo> foos = ...build(Foo.class).getMatching(em)
+                            // The first case is just a cast, the second case the class Foo has a property 
+                            // named exactly as the requested column field, and we must reflect its #setName(integer).
+                            
+                            // If return is null or its type is assignable to clazz, just cast it.
+                            if (os.length == 1)
+                            {
+                                final Object o = os[0];
+                                if (o == null)
+                                    return null;
+                                else if (clazz.isAssignableFrom(o.getClass()))
+                                    return (E) o; // safe
+                            }
+                            
+                            final E e = clazz.newInstance();
+                            for (int i = 0; i < os.length; i++)
+                            {
+                                final Capture c = customSelect.get(i);
+                                final Class<?> paramType = c.method.getReturnType();
+                                final String setterName = c.method.getName().replaceFirst("(is|get)", "set");
+                                final Method setterMethod = clazz.getMethod(setterName, paramType);
+                                setterMethod.invoke(e, os[i]);
+                            }
+                            return e;
+                        }
+                        catch (InstantiationException | IllegalAccessException | NoSuchMethodException | SecurityException
+                                | IllegalArgumentException | InvocationTargetException e)
+                        {
+                            assert false : "The class provided does not contain the requested named fields, is not a java bean or hasn't a default public ctor";
+                        }
+                        return null;
+                    };
+
+                    @Override
+                    public E getSingleMatching(EntityManager em)
+                    {
+                        final Object singleResult = createQuery(em, isNativeQuery).getSingleResult();
+                        if (singleResult != null)
+                            if (singleResult.getClass().isArray())
+                                return copyProperties.apply((Object[]) singleResult);
+                            else 
+                                return copyProperties.apply(new Object[] { singleResult });
+                       
+                        return null;
+                    }
+
+                    @Override
+                    @SuppressWarnings("unchecked")
+                    public List<E> getMatching(EntityManager em)
+                    {
+                        return Lists.transform(createQuery(em, isNativeQuery).getResultList(), copyProperties);
+                    }
+
+                    private Query createQuery(EntityManager em, boolean isNative)
+                    {
+                        final String queryString = composeStringQuery();
+                        final Query query = isNative ? em.createNativeQuery(queryString) : em.createQuery(queryString);
+                        params.solveQuery(queryString, query);
+                        return query;
+                    }
+                };
+            }
+
             @Override
             public String toString()
             {
@@ -414,12 +523,14 @@ public class EntityMatcher
 
             private String composeSelect()
             {
-                return isNativeQuery ? createNativeSelect() : "SELECT ".concat(toAlias(retType.getSimpleName()));
+                return !customSelect.isEmpty() ? createCustomSelect()
+                        : isNativeQuery ? createNativeSelect() : "SELECT ".concat(toAlias(retType.getSimpleName()));
             }
 
             private String createNativeSelect()
             {
                 final StringBuilder sb = new StringBuilder("SELECT ");
+                final String tableName = getTableName(retType);
 
                 // We can use reflection since calls are deterministic (even when it is not
                 // guaranteed they follow the declaration order)
@@ -429,11 +540,25 @@ public class EntityMatcher
                         continue;
 
                     final String name = getColumnName(f);
-                    sb.append(name).append(", ");
+                    sb.append(tableName).append(".").append(name).append(", ");
                 }
 
                 // remove last unnecessary comma.
                 sb.replace(sb.length() - 2, sb.length(), "");
+                return sb.toString();
+            }
+
+            private String createCustomSelect()
+            {
+                final StringBuilder sb = new StringBuilder("SELECT ");
+                for (Iterator<Capture> it = customSelect.iterator(); it.hasNext();)
+                {
+                    final Capture next = it.next();
+                    final String tableAlias = toAlias(getTableName(next));
+                    final String columnName = getColumnName(next);
+
+                    sb.append(tableAlias).append(".").append(columnName).append(it.hasNext() ? ", " : "");
+                }
                 return sb.toString();
             }
         }

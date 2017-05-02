@@ -33,7 +33,7 @@ public interface Statement
     {
         return Lists.newArrayList(new Part(lhs, conn, rhs));
     }
-
+    
     public static String toString(List<Part> parts)
     {
         final StringBuilder sb = new StringBuilder();
