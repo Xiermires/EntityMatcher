@@ -27,6 +27,9 @@ import java.util.List;
 import org.entitymatcher.Statement.Negatable;
 import org.entitymatcher.Statement.Part;
 
+/**
+ * Query expressions.
+ */
 public class Statements
 {
     enum Connector implements Negatable
@@ -50,6 +53,7 @@ public class Statements
         public void negate()
         {
             conn = isNegated ? affirmed : negated;
+            isNegated = !isNegated;
         }
 
         @Override
@@ -63,6 +67,8 @@ public class Statements
     {
     }
 
+    // Conditional statements 
+    
     public static <T> LhsStatement<T> like(T t)
     {
         return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Statement.create(
@@ -112,7 +118,31 @@ public class Statements
             return parts;
         });
     }
-
+    
+    // Select / Having functions.
+    
+    public static <T> LhsStatement<T> max(T t)
+    {
+        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> {
+            return Statement.create(" MAX(" + tableColumn(lhsTable, lhsColumn) + ")", Statement.dontNegate, "");
+        });
+    }
+    
+    public static <T> LhsStatement<T> max(LhsStatement<T> st)
+    {
+        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> {
+            final String expr = Statement.toString(st.toJpql(lhsTable, lhsColumn, rhsTable, rhsColumn, params));
+            return Statement.create(" MAX(" + expr + ")", Statement.dontNegate, "");
+        });
+    }
+    
+    public static <T> LhsStatement<T> distinct(T t)
+    {
+        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> {
+            return Statement.create(" DISTINCT(" + tableColumn(lhsTable, lhsColumn) + ")", Statement.dontNegate, "");
+        });
+    }
+    
     static String tableColumn(String table, String column)
     {
         return table.concat(".").concat(column);

@@ -21,12 +21,14 @@
  *******************************************************************************/
 package org.entitymatcher;
 
+import static org.entitymatcher.Statements.distinct;
 import static org.entitymatcher.Statements.eq;
 import static org.entitymatcher.Statements.gt;
 import static org.entitymatcher.Statements.in;
 import static org.entitymatcher.Statements.join;
 import static org.entitymatcher.Statements.like;
 import static org.entitymatcher.Statements.lt;
+import static org.entitymatcher.Statements.max;
 import static org.entitymatcher.Statements.not;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
@@ -65,6 +67,9 @@ public class EntityMatcherTest
             em.persist(new TestJoin(7, "Bye"));
             em.persist(new TestJoin(6, "Rabbit"));
             em.persist(new TestOther(6, "Hello"));
+            em.persist(new TestOther(1, "Snake"));
+            em.persist(new TestOther(2, "Snake"));
+            em.persist(new TestOther(3, "Snake"));
             em.getTransaction().commit();
         }
         catch (Exception e)
@@ -204,7 +209,7 @@ public class EntityMatcherTest
         assertThat(to.bar, is("Hello"));
         assertThat(to.foo, is(0));
     }
-    
+
     @Test
     public void testCustomSelectDirectMapping()
     {
@@ -213,9 +218,37 @@ public class EntityMatcherTest
 
         final PreparedQuery<String> stringQuery = builder.select(tc.getBar()).match(tc.getBar(), like("Hell%"))
                 .build(String.class);
-        final String bar = stringQuery.getSingleMatching(em);
-        
-        assertThat(bar, is("Hello"));
+        assertThat(stringQuery.getSingleMatching(em), is("Hello"));
+    }
+
+    @Test
+    public void testMax()
+    {
+        final TestClass tc = EntityMatcher.matcher(TestClass.class);
+        final Builder<TestClass> builder = EntityMatcher.builder(tc);
+
+        final PreparedQuery<Integer> stringQuery = builder.select(max(tc.getFoo())).build(Integer.class);
+        assertThat(stringQuery.getSingleMatching(em), is(6));
+    }
+    
+    @Test
+    public void testDistinct()
+    {
+        final TestOther to = EntityMatcher.matcher(TestOther.class);
+        final Builder<TestOther> builder = EntityMatcher.builder(to);
+
+        final PreparedQuery<Integer> stringQuery = builder.select(distinct(to.getBar())).build(Integer.class);
+        assertThat(stringQuery.getMatching(em).size(), is(2));
+    }
+    
+    @Test
+    public void testMaxDistinct()
+    {
+        final TestOther to = EntityMatcher.matcher(TestOther.class);
+        final Builder<TestOther> builder = EntityMatcher.builder(to);
+
+        final PreparedQuery<Integer> stringQuery = builder.select(max(distinct(to.getFoo()))).nativeQuery(true).build(Integer.class);
+        assertThat(stringQuery.getSingleMatching(em), is(6));
     }
 
     @Test

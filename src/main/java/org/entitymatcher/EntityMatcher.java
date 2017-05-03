@@ -55,7 +55,7 @@ import com.google.common.collect.Lists;
 
 public class EntityMatcher
 {
-    static final Map<Class<?>, Class<?>> proxy2Class = new ConcurrentHashMap<Class<?>, Class<?>>();
+    static final Map<Class<?>, Class<?>> proxy2Class = new ConcurrentHashMap<>();
 
     /**
      * Returns an instance of a class which might be used to match {@link Statements}.
@@ -148,10 +148,11 @@ public class EntityMatcher
     {
         private Class<?> retType;
         private boolean isNativeQuery = false;
-        private final Stack<Capture> captures = new Stack<Capture>();
-        private final Set<String> tableNames = new LinkedHashSet<String>();
+        private final Stack<Capture> captures = new Stack<>();
+        private final Set<String> tableNames = new LinkedHashSet<>();
         private final ParameterBinding params = new JpqlBinding();
-        private final List<Capture> customSelect = new ArrayList<Capture>();
+        private final List<CapturedStatement> statements = new ArrayList<>();
+        private final List<CapturedStatement> customSelect = new ArrayList<>();
 
         Builder(T main, Object... others)
         {
@@ -184,7 +185,10 @@ public class EntityMatcher
             {
                 final Capture lastCapture = getLastCapture();
                 assert lastCapture == null : "Builders are not thread safe.";
-                customSelect.add(lastCapture);
+
+                if (os[i] instanceof LhsRhsStatement) customSelect.add(new CapturedStatement(lastCapture, null,
+                        (LhsRhsStatement<?>) os[i]));
+                else customSelect.add(new CapturedStatement(lastCapture, null, null));
             }
             return this;
         }
@@ -288,19 +292,259 @@ public class EntityMatcher
             captures.push((Capture) arg);
         }
 
+        public Builder<T> nativeQuery(boolean b)
+        {
+            isNativeQuery = b;
+            return this;
+        }
+
         @Override
         public String toString()
         {
-            return "SELECT ".concat(toAlias(retType.getSimpleName()));
+            return composeStringQuery();
+        }
+
+        public PreparedQuery<T> build()
+        {
+            return new PreparedQuery<T>()
+            {
+                @Override
+                @SuppressWarnings("unchecked")
+                public T getSingleMatching(EntityManager em)
+                {
+                    return (T) createQuery(em, isNativeQuery).getSingleResult();
+                }
+
+                @Override
+                @SuppressWarnings("unchecked")
+                public List<T> getMatching(EntityManager em)
+                {
+                    return createQuery(em, isNativeQuery).getResultList();
+                }
+
+                private Query createQuery(EntityManager em, boolean isNative)
+                {
+                    final String queryString = composeStringQuery();
+                    final Query query = isNative ? em.createNativeQuery(queryString) : em.createQuery(queryString);
+                    params.solveQuery(queryString, query);
+                    return query;
+                }
+            };
+        }
+
+        public <E> PreparedQuery<E> build(Class<E> clazz)
+        {
+            return new PreparedQuery<E>()
+            {
+                @SuppressWarnings("unchecked")
+                private Function<Object[], E> copyProperties = os ->
+                {
+                    try
+                    {
+                        assert os.length == customSelect.size() : "Request / response column size mismatch.";
+
+                        // If length == 1, it could be two options:
+                        // 1. List<Integer> is = ...build(Integer.class).getMatching(em)
+                        // 2. List<Foo> foos = ...build(Foo.class).getMatching(em)
+                        // The first case is just a cast, the second case the class Foo has a
+                        // property
+                        // named exactly as the requested column field, and we must reflect its
+                        // #setName(integer).
+
+                        // If return is null or its type is assignable to clazz, just cast it.
+                        if (os.length == 1)
+                        {
+                            final Object o = os[0];
+                            if (o == null)
+                            return null;
+                            else if (clazz.isAssignableFrom(o.getClass()))
+                                return (E) o; // safe
+                        }
+
+                        final E e = clazz.newInstance();
+                        for (int i = 0; i < os.length; i++)
+                        {
+                            final CapturedStatement c = customSelect.get(i);
+                            final Class<?> paramType = c.lhs.method.getReturnType();
+                            final String setterName = c.lhs.method.getName().replaceFirst("(is|get)", "set");
+                            final Method setterMethod = clazz.getMethod(setterName, paramType);
+                            setterMethod.invoke(e, os[i]);
+                        }
+                        return e;
+                    }
+                    catch (InstantiationException | IllegalAccessException | NoSuchMethodException | SecurityException
+                            | IllegalArgumentException | InvocationTargetException e)
+                    {
+                        assert false : "The class provided does not contain the requested named fields, is not a java bean or hasn't a default public ctor";
+                    }
+                    return null;
+                };
+
+                @Override
+                public E getSingleMatching(EntityManager em)
+                {
+                    final Object singleResult = createQuery(em, isNativeQuery).getSingleResult();
+                    if (singleResult != null)
+                        if (singleResult.getClass().isArray())
+                        return copyProperties.apply((Object[]) singleResult);
+                        else
+                        return copyProperties.apply(new Object[] { singleResult });
+
+                    return null;
+                }
+
+                @Override
+                @SuppressWarnings("unchecked")
+                public List<E> getMatching(EntityManager em)
+                {
+                    return Lists.transform(createQuery(em, isNativeQuery).getResultList(), copyProperties);
+                }
+
+                private Query createQuery(EntityManager em, boolean isNative)
+                {
+                    final String queryString = composeStringQuery();
+                    final Query query = isNative ? em.createNativeQuery(queryString) : em.createQuery(queryString);
+                    params.solveQuery(queryString, query);
+                    return query;
+                }
+            };
+        }
+
+        private String composeStringQuery()
+        {
+            Collections.sort(statements, new Comparator<CapturedStatement>()
+            {
+                @Override
+                public int compare(CapturedStatement o1, CapturedStatement o2)
+                {
+                    return Boolean.compare(o1.statement.isJoinRelationship(), o2.statement.isJoinRelationship());
+                }
+            });
+
+            final Set<String> unaliasedTables = new LinkedHashSet<>(Builder.this.tableNames);
+            final StringBuilder fromClause = new StringBuilder().append(" FROM ");
+            final String select = composeSelect(fromClause, unaliasedTables);
+
+            if (statements.isEmpty())
+            {
+                return new StringBuilder(select).append(removeLastComma(fromClause)).toString();
+            }
+
+            final StringBuilder whereClause = new StringBuilder().append(" WHERE ");
+
+            final Iterator<CapturedStatement> it = statements.iterator();
+            while (it.hasNext())
+            {
+                final CapturedStatement next = it.next();
+                // In join relationships the main table is resolved within FROM, while joined
+                // tables are obtained from the linked properties.
+                // Example : SELECT c FROM Parent p JOIN p.children c ON p.id = c.parentid
+                if (next.statement.isJoinRelationship())
+                {
+                    final String lhsTableName = getTableName(next.lhs);
+                    fromClause.append(
+                            Statement.toString(next.statement.toJpql(toAlias(lhsTableName), getColumnName(next.lhs),
+                                    toAlias(getTableName(next.rhs)), getColumnName(next.rhs), params))).append(", ");
+
+                    // lhsTableName has been assigned an alias in the FROM clause
+                    unaliasedTables.remove(lhsTableName);
+                }
+                else
+                {
+                    // Add aliases to the FROM clause if needed
+                    final String lhsTableName = getTableName(next.lhs);
+                    final String rhsTableName = getTableName(next.rhs);
+
+                    if (lhsTableName != null && unaliasedTables.contains(lhsTableName))
+                    {
+                        fromClause.append(lhsTableName).append(" ").append(toAlias(lhsTableName)).append(", ");
+                        unaliasedTables.remove(lhsTableName);
+                    }
+                    if (rhsTableName != null && unaliasedTables.contains(rhsTableName))
+                    {
+                        fromClause.append(rhsTableName).append(" ").append(toAlias(rhsTableName)).append(", ");
+                        unaliasedTables.remove(rhsTableName);
+                    }
+
+                    // Add WHERE conditions
+                    whereClause.append(Statement.toString(next.statement.toJpql(toAlias(lhsTableName),
+                            getColumnName(next.lhs),
+                            toAlias(rhsTableName), getColumnName(next.rhs), params)));
+                }
+            }
+
+            removeLastComma(fromClause);
+            return new StringBuilder(select).append(fromClause).append(whereClause).toString();
+        }
+
+        // It is actually easier to remove a known last comma, that to handle all unknowns while
+        // iterating (transient, no statements, joins, ...)
+        private StringBuilder removeLastComma(final StringBuilder fromClause)
+        {
+            return fromClause.replace(fromClause.length() - 2, fromClause.length(), "");
+        }
+
+        private String composeSelect(StringBuilder fromClause, Set<String> unaliasedTables)
+        {
+            return !customSelect.isEmpty() ? createCustomSelect(fromClause, unaliasedTables)
+                    : isNativeQuery ? createNativeSelect(fromClause, unaliasedTables) : "SELECT ".concat(toAlias(retType
+                            .getSimpleName()));
+        }
+
+        private String createNativeSelect(StringBuilder fromClause, Set<String> unaliasedTables)
+        {
+            final StringBuilder sb = new StringBuilder("SELECT ");
+            final String tableName = getTableName(retType);
+            final String tableAlias = toAlias(tableName);
+
+            fromClause.append(tableName).append(" ").append(tableAlias).append(", ");
+            unaliasedTables.remove(tableName);
+
+            // We can use reflection since calls are deterministic (even when it is not
+            // guaranteed they follow the declaration order)
+            for (Field f : retType.getDeclaredFields())
+            {
+                if (f.isAnnotationPresent(Transient.class))
+                    continue;
+
+                final String name = getColumnName(f);
+                sb.append(tableAlias).append(".").append(name).append(", ");
+            }
+
+            removeLastComma(sb);
+            return sb.toString();
+        }
+
+        private String createCustomSelect(StringBuilder fromClause, Set<String> unaliasedTables)
+        {
+            final StringBuilder sb = new StringBuilder("SELECT ");
+            for (Iterator<CapturedStatement> it = customSelect.iterator(); it.hasNext();)
+            {
+                final CapturedStatement next = it.next();
+                final String tableName = getTableName(next.lhs);
+                final String tableAlias = toAlias(tableName);
+                final String columnName = getColumnName(next.lhs);
+
+                if (unaliasedTables.contains(tableName))
+                {
+                    fromClause.append(tableName).append(" ").append(tableAlias).append(", ");
+                    unaliasedTables.remove(tableName);
+                }
+
+                if (next.statement != null) sb.append(Statement.toString(next.statement.toJpql(tableAlias, columnName, null,
+                        null, params)));
+                else sb.append(tableAlias).append(".").append(columnName);
+
+                sb.append(it.hasNext() ? ", " : "");
+            }
+            return sb.toString();
         }
 
         class StatementComposer
         {
-            private final List<CapturedStatement> statements;
-
             StatementComposer(CapturedStatement statement)
             {
-                statements = Lists.newArrayList(statement);
+                statements.add(statement);
             }
 
             public StatementComposer nativeQuery(boolean b)
@@ -347,219 +591,12 @@ public class EntityMatcher
 
             public PreparedQuery<T> build()
             {
-                return new PreparedQuery<T>()
-                {
-                    @Override
-                    @SuppressWarnings("unchecked")
-                    public T getSingleMatching(EntityManager em)
-                    {
-                        return (T) createQuery(em, isNativeQuery).getSingleResult();
-                    }
-
-                    @Override
-                    @SuppressWarnings("unchecked")
-                    public List<T> getMatching(EntityManager em)
-                    {
-                        return createQuery(em, isNativeQuery).getResultList();
-                    }
-
-                    private Query createQuery(EntityManager em, boolean isNative)
-                    {
-                        final String queryString = composeStringQuery();
-                        final Query query = isNative ? em.createNativeQuery(queryString) : em.createQuery(queryString);
-                        params.solveQuery(queryString, query);
-                        return query;
-                    }
-                };
+                return Builder.this.build();
             }
 
             public <E> PreparedQuery<E> build(Class<E> clazz)
             {
-                return new PreparedQuery<E>()
-                {
-                    @SuppressWarnings("unchecked")
-                    private Function<Object[], E> copyProperties = os ->
-                    {
-                        try
-                        {
-                            assert os.length == customSelect.size() : "Request / response column size mismatch.";
-                            
-                            // If length == 1, it could be two options:
-                            // 1. List<Integer> is = ...build(Integer.class).getMatching(em)
-                            // 2. List<Foo> foos = ...build(Foo.class).getMatching(em)
-                            // The first case is just a cast, the second case the class Foo has a property 
-                            // named exactly as the requested column field, and we must reflect its #setName(integer).
-                            
-                            // If return is null or its type is assignable to clazz, just cast it.
-                            if (os.length == 1)
-                            {
-                                final Object o = os[0];
-                                if (o == null)
-                                    return null;
-                                else if (clazz.isAssignableFrom(o.getClass()))
-                                    return (E) o; // safe
-                            }
-                            
-                            final E e = clazz.newInstance();
-                            for (int i = 0; i < os.length; i++)
-                            {
-                                final Capture c = customSelect.get(i);
-                                final Class<?> paramType = c.method.getReturnType();
-                                final String setterName = c.method.getName().replaceFirst("(is|get)", "set");
-                                final Method setterMethod = clazz.getMethod(setterName, paramType);
-                                setterMethod.invoke(e, os[i]);
-                            }
-                            return e;
-                        }
-                        catch (InstantiationException | IllegalAccessException | NoSuchMethodException | SecurityException
-                                | IllegalArgumentException | InvocationTargetException e)
-                        {
-                            assert false : "The class provided does not contain the requested named fields, is not a java bean or hasn't a default public ctor";
-                        }
-                        return null;
-                    };
-
-                    @Override
-                    public E getSingleMatching(EntityManager em)
-                    {
-                        final Object singleResult = createQuery(em, isNativeQuery).getSingleResult();
-                        if (singleResult != null)
-                            if (singleResult.getClass().isArray())
-                                return copyProperties.apply((Object[]) singleResult);
-                            else 
-                                return copyProperties.apply(new Object[] { singleResult });
-                       
-                        return null;
-                    }
-
-                    @Override
-                    @SuppressWarnings("unchecked")
-                    public List<E> getMatching(EntityManager em)
-                    {
-                        return Lists.transform(createQuery(em, isNativeQuery).getResultList(), copyProperties);
-                    }
-
-                    private Query createQuery(EntityManager em, boolean isNative)
-                    {
-                        final String queryString = composeStringQuery();
-                        final Query query = isNative ? em.createNativeQuery(queryString) : em.createQuery(queryString);
-                        params.solveQuery(queryString, query);
-                        return query;
-                    }
-                };
-            }
-
-            @Override
-            public String toString()
-            {
-                return composeStringQuery();
-            }
-
-            private String composeStringQuery()
-            {
-                final String select = composeSelect();
-
-                if (statements.isEmpty())
-                    return select;
-
-                Collections.sort(statements, new Comparator<CapturedStatement>()
-                {
-                    @Override
-                    public int compare(CapturedStatement o1, CapturedStatement o2)
-                    {
-                        return Boolean.compare(o1.statement.isJoinRelationship(), o2.statement.isJoinRelationship());
-                    }
-                });
-
-                final Set<String> unaliasedTables = new LinkedHashSet<String>(Builder.this.tableNames);
-
-                final StringBuilder fromClause = new StringBuilder().append(" FROM ");
-                final StringBuilder whereClause = new StringBuilder().append(" WHERE ");
-
-                final Iterator<CapturedStatement> it = statements.iterator();
-                while (it.hasNext())
-                {
-                    final CapturedStatement next = it.next();
-                    // In join relationships the main table is resolved within FROM, while joined
-                    // tables are obtained from the linked properties.
-                    // Example : SELECT c FROM Parent p JOIN p.children c ON p.id = c.parentid
-                    if (next.statement.isJoinRelationship())
-                    {
-                        final String lhsTableName = getTableName(next.lhs);
-                        fromClause.append(next.statement.toJpql(toAlias(lhsTableName), getColumnName(next.lhs),
-                                toAlias(getTableName(next.rhs)), getColumnName(next.rhs), params)).append(", ");
-
-                        // lhsTableName has been assigned an alias in the FROM clause
-                        unaliasedTables.remove(lhsTableName);
-                    }
-                    else
-                    {
-                        // Add aliases to the FROM clause if needed
-                        final String lhsTableName = getTableName(next.lhs);
-                        final String rhsTableName = getTableName(next.rhs);
-
-                        if (lhsTableName != null && unaliasedTables.contains(lhsTableName))
-                        {
-                            fromClause.append(lhsTableName).append(" ").append(toAlias(lhsTableName)).append(", ");
-                            unaliasedTables.remove(lhsTableName);
-                        }
-                        if (rhsTableName != null && unaliasedTables.contains(rhsTableName))
-                        {
-                            fromClause.append(rhsTableName).append(" ").append(toAlias(rhsTableName)).append(", ");
-                            unaliasedTables.remove(rhsTableName);
-                        }
-
-                        // Add WHERE conditions
-                        whereClause.append(Statement.toString(next.statement.toJpql(toAlias(lhsTableName),
-                                getColumnName(next.lhs),
-                                toAlias(rhsTableName), getColumnName(next.rhs), params)));
-                    }
-                }
-
-                // remove last FROM unnecessary comma.
-                fromClause.replace(fromClause.length() - 2, fromClause.length(), "");
-                return new StringBuilder(select).append(fromClause).append(whereClause).toString();
-            }
-
-            private String composeSelect()
-            {
-                return !customSelect.isEmpty() ? createCustomSelect()
-                        : isNativeQuery ? createNativeSelect() : "SELECT ".concat(toAlias(retType.getSimpleName()));
-            }
-
-            private String createNativeSelect()
-            {
-                final StringBuilder sb = new StringBuilder("SELECT ");
-                final String tableName = getTableName(retType);
-
-                // We can use reflection since calls are deterministic (even when it is not
-                // guaranteed they follow the declaration order)
-                for (Field f : retType.getDeclaredFields())
-                {
-                    if (f.isAnnotationPresent(Transient.class))
-                        continue;
-
-                    final String name = getColumnName(f);
-                    sb.append(tableName).append(".").append(name).append(", ");
-                }
-
-                // remove last unnecessary comma.
-                sb.replace(sb.length() - 2, sb.length(), "");
-                return sb.toString();
-            }
-
-            private String createCustomSelect()
-            {
-                final StringBuilder sb = new StringBuilder("SELECT ");
-                for (Iterator<Capture> it = customSelect.iterator(); it.hasNext();)
-                {
-                    final Capture next = it.next();
-                    final String tableAlias = toAlias(getTableName(next));
-                    final String columnName = getColumnName(next);
-
-                    sb.append(tableAlias).append(".").append(columnName).append(it.hasNext() ? ", " : "");
-                }
-                return sb.toString();
+                return Builder.this.build(clazz);
             }
         }
     }

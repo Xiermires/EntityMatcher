@@ -29,11 +29,16 @@ public interface Statement
 {
     List<Part> toJpql(String lhsTableAlias, String lhsColumn, String rhsTableAlias, String rhsColumn, ParameterBinding params);
 
+    public static List<Part> create(String expr)
+    {
+        return Lists.newArrayList(new Part(expr, dontNegate, ""));
+    }
+
     public static List<Part> create(String lhs, Negatable conn, String rhs)
     {
         return Lists.newArrayList(new Part(lhs, conn, rhs));
     }
-    
+
     public static String toString(List<Part> parts)
     {
         final StringBuilder sb = new StringBuilder();
@@ -60,7 +65,7 @@ public interface Statement
             this.rhs = rhs;
         }
     }
-
+    
     /**
      * Negates an expression.
      * <p>
@@ -70,4 +75,18 @@ public interface Statement
     {
         void negate();
     }
+
+    public static final Negatable dontNegate = new Negatable()
+    {
+        @Override
+        public void negate()
+        {
+        }
+
+        @Override
+        public String toString()
+        {
+            return "";
+        }
+    };
 }

@@ -85,19 +85,8 @@ public class LhsStatement<T> extends LhsRhsStatement<T>
         return l;
     }
 
-    // Ignore OR / AND negation
-    enum Connector implements Negatable
-    {
-        OR, AND;
-
-        @Override
-        public void negate()
-        {
-        }
-    }
-
     public static final LhsStatement<?> or = new LhsStatement<Object>(
-            (lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Lists.newArrayList(Statement.create(" ", Connector.OR, " ")));
+            (lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Lists.newArrayList(Statement.create(" OR ")));
     public static final LhsStatement<?> and = new LhsStatement<Object>(
-            (lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Lists.newArrayList(Statement.create(" ", Connector.AND, " ")));
+            (lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Lists.newArrayList(Statement.create(" AND ")));
 }
