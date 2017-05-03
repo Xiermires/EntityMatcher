@@ -57,14 +57,15 @@ We can also use Java Beans to store the retrived information. For instance assum
     final Builder<Person> builder = EntityMatcher.builder(person);
 
     // SELECT person.name, person.age FROM Person person
-    final List<Animal> names = builder.select(person.getName(), person.getAge()).build(Animal.class).getMatching(em);
+    final List<Animal> animerson = builder.select(person.getName(), person.getAge()).build(Animal.class).getMatching(em);
 ```
 
 3) Statements
 
 There are two kind of statements. LhsStatements (left-hand-side) and LhsRhsStatements (left-hand-side and right-hand-side). 
 A LhsStatements receives information about one capture (table / column), while a LhsRhsStament receive information about two captures.
-For instance { =, !=, like, >, >=, in, ... } are all LhsStatements since the statement composes of a table + column, an operation, plus maybe a value.
+
+For instance { =, !=, like, >, >=, in, ... } are all <b>LhsStatements</b> since the statement composes of a table + column, an operation, plus maybe a value.
 
 As an example, let's find within a table associated to an entity Person, all people called "Xiermires".
 
@@ -73,12 +74,12 @@ As an example, let's find within a table associated to an entity Person, all peo
     final EntityManager em = ...;
     final Person person = EntityMatcher.matcher(Person.class);
 
-    final List<Person> orders = EntityMatcher.builder(person) // 
+    final List<Person> persons = EntityMatcher.builder(person) // 
                                     .match(person.getName(), eq("Xiermires")) // 
                                     .build().getMatching(em);
 ```
 
-<b>LhsStatements</b> allow AND and OR chains to simplify building process. 
+LhsStatements allow AND and OR chains to simplify building process. 
 ``` 
     final Person person = EntityMatcher.matcher(Person.class);
 
@@ -97,7 +98,6 @@ Both these expressions translate into : SELECT person FROM Person person WHERE p
 An additional example of the same principle would be to find all people older than 30, which ages are odd. 
 
 ```
-    // Same using an OR chain
     EntityMatcher.builder(person).nativeQuery(true) // 
                     .match(person.getAge(), gt(30).and(isOdd()))
 ```
@@ -117,7 +117,18 @@ Let's for instance check which people share name with an animal (ehem... Indiana
                     .match(person.getName(), join(animal.getName()));
 ```
 
-Coding Statements is relatively straightforward. Both LhsStatement and LhsRhsStatement are instantiated with a Statement, where Statement is the following interface.
+Unfortunately to join several tables, only the verbose option is available (that might change in the future).
+
+```
+    final Person person = EntityMatcher.matcher(Person.class);
+    final Animal animal = EntityMatcher.matcher(Animal.class);
+    final City city = EntityMatcher.matcher(City.class);
+    EntityMatcher.builder(person, animal, city) // 
+                    .match(person.getName(), join(animal.getName())).and(person.getName(), join(city.getName()));
+```
+
+
+Coding Statements is relatively straightforward. Both LhsStatement and LhsRhsStatement are instantiated with a Statement, where each statement implements the following interface.
 
 ```
 
@@ -135,7 +146,8 @@ For instance this creates a LIKE statement.
 ```
     public static <T> LhsStatement<T> like(T t)
     {
-        return new LhsStatement<T>((lhsAlias, lhsColumn, rhsAlias, rhsColumn, params) -> Statement.create(
+        // This is a LhsStatement. { rhsTableAlias && rhsColumn } are both null.
+        return new LhsStatement<T>((lhsTableAlias, lhsColumn, rhsTableAlias, rhsColumn, params) -> Statement.create(
                 tableColumn(lhsTable, lhsColumn), Connector.LIKE, valueOf(t)));
     }
 ```
@@ -146,11 +158,12 @@ a) Why forcing some weird Part thing and not return a String directly ?
 
 ```(lhsAlias, lhsColumn, rhsAlias, rhsColumn, params) -> tableColumn(lhsTable, lhsColumn) + " LIKE " + valueOf(t));```
 
-Basically due to the NOT nature. Consider the following if we were using Strings. 
+Basically due to the NOT nature. Consider how to acomplish the following if we were to use Strings. 
 
-```...match(person.getName(), not(like("Xiermir%")));``` 
+```...match(person.getName(), not(like("Xiermir%")).and(not(in(tabooNames)));``` 
 
-Here do this operations look like ?.
+
+Let's have a look at how the operations look like ?.
 
 ```    
     enum Connector implements Negatable
