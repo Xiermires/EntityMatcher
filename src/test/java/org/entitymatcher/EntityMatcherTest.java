@@ -184,6 +184,16 @@ public class EntityMatcherTest
         final PreparedQuery<TestClass> query = builder.match(tc.getBar(), in(Arrays.asList("Hello", "Bye"))).build();
         assertThat(query.getMatching(em).size(), is(2));
     }
+    
+    @Test
+    public void testInNative()
+    {
+        final TestClass tc = EntityMatcher.matcher(TestClass.class);
+        final Builder<TestClass> builder = EntityMatcher.builder(tc);
+
+        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), in(Arrays.asList("Hello", "Bye"))).nativeQuery(true).build();
+        assertThat(query.getMatching(em).size(), is(2));
+    }
 
     @Test
     public void testNative()

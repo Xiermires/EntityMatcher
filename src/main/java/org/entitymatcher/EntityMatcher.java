@@ -225,9 +225,13 @@ public class EntityMatcher
 
         private String getTableName(Class<?> clazz)
         {
-            final Table table = clazz.getAnnotation(Table.class);
-            final String tableName = table == null || table.name().isEmpty() ? clazz.getSimpleName() : table.name();
-            return tableName;
+            if (isNativeQuery)
+            {
+                final Table table = clazz.getAnnotation(Table.class);
+                final String tableName = table == null || table.name().isEmpty() ? clazz.getSimpleName() : table.name();
+                return tableName;
+            }
+            else return clazz.getSimpleName();
         }
 
         String getColumnName(Capture c)
@@ -260,8 +264,13 @@ public class EntityMatcher
 
         private String getColumnName(Field f)
         {
-            final Column c = f.getAnnotation(Column.class);
-            return c == null || c.name().isEmpty() ? f.getName() : c.name();
+            if (isNativeQuery)
+            {
+                final Column c = f.getAnnotation(Column.class);
+                return c == null || c.name().isEmpty() ? f.getName() : c.name();
+            }
+            else
+                return f.getName();
         }
 
         Capture getLastCapture()
@@ -328,6 +337,12 @@ public class EntityMatcher
                     final Query query = isNative ? em.createNativeQuery(queryString) : em.createQuery(queryString);
                     params.solveQuery(queryString, query);
                     return query;
+                }
+
+                @Override
+                public String toString()
+                {
+                    return composeStringQuery();
                 }
             };
         }
@@ -406,6 +421,12 @@ public class EntityMatcher
                     final Query query = isNative ? em.createNativeQuery(queryString) : em.createQuery(queryString);
                     params.solveQuery(queryString, query);
                     return query;
+                }
+
+                @Override
+                public String toString()
+                {
+                    return composeStringQuery();
                 }
             };
         }

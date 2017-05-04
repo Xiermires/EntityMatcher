@@ -28,7 +28,7 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 
 @Entity
-@Table(name = "TestJoin")
+@Table(name = "TestJoin_v2")
 public class TestJoin
 {
     @Id
@@ -37,7 +37,7 @@ public class TestJoin
 
     int foo;
 
-    @Column(name = "Bar_v2")
+    @Column(name = "Bar")
     String bar;
 
     // test only
