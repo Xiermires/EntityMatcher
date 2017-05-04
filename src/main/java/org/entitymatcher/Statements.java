@@ -143,6 +143,35 @@ public class Statements
         });
     }
     
+    public static <T> LhsStatement<T> count(T t)
+    {
+        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> {
+            return Statement.create(" COUNT(" + tableColumn(lhsTable, lhsColumn) + ")", Statement.dontNegate, "");
+        });
+    }
+    
+    public static <T> LhsStatement<T> count(LhsStatement<T> st)
+    {
+        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> {
+            final String expr = Statement.toString(st.toJpql(lhsTable, lhsColumn, rhsTable, rhsColumn, params));
+            return Statement.create(" COUNT(" + expr + ")", Statement.dontNegate, "");
+        });
+    }
+    
+    public static <T> LhsStatement<T> min(T t)
+    {
+        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> {
+            return Statement.create(" MIN(" + tableColumn(lhsTable, lhsColumn) + ")", Statement.dontNegate, "");
+        });
+    }
+    
+    public static <T> LhsStatement<T> avg(T t)
+    {
+        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> {
+            return Statement.create(" AVG(" + tableColumn(lhsTable, lhsColumn) + ")", Statement.dontNegate, "");
+        });
+    }
+    
     static String tableColumn(String table, String column)
     {
         return table.concat(".").concat(column);

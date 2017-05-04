@@ -21,6 +21,7 @@
  *******************************************************************************/
 package org.entitymatcher;
 
+import static org.entitymatcher.Statements.count;
 import static org.entitymatcher.Statements.distinct;
 import static org.entitymatcher.Statements.eq;
 import static org.entitymatcher.Statements.gt;
@@ -29,10 +30,12 @@ import static org.entitymatcher.Statements.join;
 import static org.entitymatcher.Statements.like;
 import static org.entitymatcher.Statements.lt;
 import static org.entitymatcher.Statements.max;
+import static org.entitymatcher.Statements.min;
 import static org.entitymatcher.Statements.not;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
+import java.math.BigInteger;
 import java.util.Arrays;
 
 import javax.persistence.EntityManager;
@@ -239,6 +242,38 @@ public class EntityMatcherTest
 
         final PreparedQuery<Integer> stringQuery = builder.select(max(tc.getFoo())).build(Integer.class);
         assertThat(stringQuery.getSingleMatching(em), is(6));
+    }
+    
+    @Test
+    public void testMin()
+    {
+        final TestClass tc = EntityMatcher.matcher(TestClass.class);
+        final Builder<TestClass> builder = EntityMatcher.builder(tc);
+
+        final PreparedQuery<Integer> stringQuery = builder.select(min(tc.getFoo())).build(Integer.class);
+        assertThat(stringQuery.getSingleMatching(em), is(3));
+    }
+    
+    @Test
+    public void testCountDistinct()
+    {
+        final TestClass tc = EntityMatcher.matcher(TestClass.class);
+        final Builder<TestClass> builder = EntityMatcher.builder(tc);
+
+        // FIXME: Conversion operations within the EntityMatcher (this should return an Integer).
+        final PreparedQuery<BigInteger> stringQuery = builder.select(count(distinct(tc.getBar()))).nativeQuery(true).build(BigInteger.class);
+        assertThat(stringQuery.getSingleMatching(em).intValue(), is(3));
+    }
+    
+    @Test
+    public void testCount()
+    {
+        final TestClass tc = EntityMatcher.matcher(TestClass.class);
+        final Builder<TestClass> builder = EntityMatcher.builder(tc);
+
+        // FIXME: Conversion operations within the EntityMatcher (this should return an Integer).
+        final PreparedQuery<BigInteger> stringQuery = builder.select(count(tc.getBar())).nativeQuery(true).build(BigInteger.class);
+        assertThat(stringQuery.getSingleMatching(em).intValue(), is(3));
     }
     
     @Test
