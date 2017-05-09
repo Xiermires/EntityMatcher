@@ -7,7 +7,7 @@ By default it translates the queries into JPQL. Native SQL support can be enable
 TODOs :
 
 * Allow nesting classes
-* Having, group by, order by
+* Having
 
 About...
 
