@@ -311,4 +311,19 @@ public class EntityMatcherTest
 
         System.out.println(composer.toString());
     }
+    
+    @Test
+    public void orderBy()
+    {
+        final TestClass tc = EntityMatcher.matcher(TestClass.class);
+        final Builder<TestClass> builder = EntityMatcher.builder(tc);
+
+        final PreparedQuery<TestClass> stringQuery = builder.orderBy(tc.getFoo()).build();
+        int next = Integer.MIN_VALUE;
+        for (TestClass each : stringQuery.getMatching(em))
+        {
+            next = Math.max(each.getFoo(), next);
+            assertThat(each.getFoo(), is(next));
+        }
+    }
 }

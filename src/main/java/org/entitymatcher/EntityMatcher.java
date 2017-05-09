@@ -144,16 +144,21 @@ public class EntityMatcher
         return alias == null ? null : alias.substring(0, 1).toUpperCase().concat(alias.substring(1));
     }
 
+    // TODO: Cleanup
     public static class Builder<T> implements Observer
     {
-        private Class<?> retType;
+        private Class<T> retType;
         private boolean isNativeQuery = false;
         private final Stack<Capture> captures = new Stack<>();
         private final Set<String> tableNames = new LinkedHashSet<>();
         private final ParameterBinding params = new JpqlBinding();
+        private final List<CapturedStatement> select = new ArrayList<>();
+        private final List<CapturedStatement> groupBy = new ArrayList<>();
+        private final List<CapturedStatement> orderBy = new ArrayList<>();
+        private ORDER_BY order = null;
         private final List<CapturedStatement> statements = new ArrayList<>();
-        private final List<CapturedStatement> customSelect = new ArrayList<>();
 
+        @SuppressWarnings("unchecked")
         Builder(T main, Object... others)
         {
             assert proxy2Class.containsKey(main.getClass()) //
@@ -166,7 +171,7 @@ public class EntityMatcher
             tableNames.add(EntityMatcher.proxy2Class.get(main.getClass()).getSimpleName());
             Arrays.asList(others).forEach(o -> tableNames.add(EntityMatcher.proxy2Class.get(o.getClass()).getSimpleName()));
 
-            retType = EntityMatcher.proxy2Class.get(main.getClass());
+            retType = (Class<T>) EntityMatcher.proxy2Class.get(main.getClass());
         }
 
         /**
@@ -180,15 +185,56 @@ public class EntityMatcher
          */
         public Builder<T> select(Object... os)
         {
-            customSelect.clear(); // doesn't allow incremental selects.
+            select.clear(); // doesn't allow incremental selects.
             for (int i = 0; i < os.length; i++)
             {
                 final Capture lastCapture = getLastCapture();
                 assert lastCapture == null : "Builders are not thread safe.";
 
-                if (os[i] instanceof LhsRhsStatement) customSelect.add(new CapturedStatement(lastCapture, null,
+                if (os[i] instanceof LhsRhsStatement) select.add(new CapturedStatement(lastCapture, null,
                         (LhsRhsStatement<?>) os[i]));
-                else customSelect.add(new CapturedStatement(lastCapture, null, null));
+                else select.add(new CapturedStatement(lastCapture, null, null));
+            }
+            return this;
+        }
+
+        public enum ORDER_BY
+        {
+            ASC, DESC
+        };
+
+        public Builder<T> orderBy(Object... os)
+        {
+            return orderBy(ORDER_BY.ASC, os);
+        }
+
+        public Builder<T> orderBy(ORDER_BY order, Object... os)
+        {
+            orderBy.clear(); // doesn't allow incremental orderBy's.
+            this.order = order;
+            for (int i = 0; i < os.length; i++)
+            {
+                final Capture lastCapture = getLastCapture();
+                assert lastCapture == null : "Builders are not thread safe.";
+
+                if (os[i] instanceof LhsRhsStatement) orderBy.add(new CapturedStatement(lastCapture, null,
+                        (LhsRhsStatement<?>) os[i]));
+                else orderBy.add(new CapturedStatement(lastCapture, null, null));
+            }
+            return this;
+        }
+
+        public Builder<T> groupBy(Object... os)
+        {
+            groupBy.clear(); // doesn't allow incremental groupBy's.
+            for (int i = 0; i < os.length; i++)
+            {
+                final Capture lastCapture = getLastCapture();
+                assert lastCapture == null : "Builders are not thread safe.";
+
+                if (os[i] instanceof LhsRhsStatement) groupBy.add(new CapturedStatement(lastCapture, null,
+                        (LhsRhsStatement<?>) os[i]));
+                else groupBy.add(new CapturedStatement(lastCapture, null, null));
             }
             return this;
         }
@@ -269,8 +315,7 @@ public class EntityMatcher
                 final Column c = f.getAnnotation(Column.class);
                 return c == null || c.name().isEmpty() ? f.getName() : c.name();
             }
-            else
-                return f.getName();
+            else return f.getName();
         }
 
         Capture getLastCapture()
@@ -315,6 +360,9 @@ public class EntityMatcher
 
         public PreparedQuery<T> build()
         {
+            if (isNativeQuery)
+                return build(retType);
+
             return new PreparedQuery<T>()
             {
                 @Override
@@ -347,16 +395,19 @@ public class EntityMatcher
             };
         }
 
+        @SuppressWarnings("unchecked")
         public <E> PreparedQuery<E> build(Class<E> clazz)
         {
+            if (clazz.equals(retType) && !isNativeQuery)
+                return (PreparedQuery<E>) build();
+
             return new PreparedQuery<E>()
             {
-                @SuppressWarnings("unchecked")
                 private Function<Object[], E> copyProperties = os ->
                 {
                     try
                     {
-                        assert os.length == customSelect.size() : "Request / response column size mismatch.";
+                        assert os.length == select.size() : "Request / response column size mismatch.";
 
                         // If length == 1, it could be two options:
                         // 1. List<Integer> is = ...build(Integer.class).getMatching(em)
@@ -377,13 +428,37 @@ public class EntityMatcher
                         }
 
                         final E e = clazz.newInstance();
-                        for (int i = 0; i < os.length; i++)
+                        if (select.isEmpty())
                         {
-                            final CapturedStatement c = customSelect.get(i);
-                            final Class<?> paramType = c.lhs.method.getReturnType();
-                            final String setterName = c.lhs.method.getName().replaceFirst("(is|get)", "set");
-                            final Method setterMethod = clazz.getMethod(setterName, paramType);
-                            setterMethod.invoke(e, os[i]);
+                            int i = 0;
+                            // FIXME review all this.
+                            for (Field f : clazz.getDeclaredFields())
+                            {
+                                if (f.isAnnotationPresent(Transient.class))
+                                    continue;
+
+                                if (os[i] == null)
+                                {
+                                    i++;
+                                    continue;
+                                }
+
+                                final int rank = NumberConversion.getRank(f.getType());
+                                final Object o = rank >= 0 ? NumberConversion.convert(os[i], rank) : os[i];
+                                f.set(e, o);
+                                i++;
+                            }
+                        }
+                        else
+                        {
+                            for (int i = 0; i < os.length; i++)
+                            {
+                                final CapturedStatement c = select.get(i);
+                                final Class<?> paramType = c.lhs.method.getReturnType();
+                                final String setterName = c.lhs.method.getName().replaceFirst("(is|get)", "set");
+                                final Method setterMethod = clazz.getMethod(setterName, paramType);
+                                setterMethod.invoke(e, os[i]);
+                            }
                         }
                         return e;
                     }
@@ -409,7 +484,6 @@ public class EntityMatcher
                 }
 
                 @Override
-                @SuppressWarnings("unchecked")
                 public List<E> getMatching(EntityManager em)
                 {
                     return Lists.transform(createQuery(em, isNativeQuery).getResultList(), copyProperties);
@@ -444,15 +518,60 @@ public class EntityMatcher
 
             final Set<String> unaliasedTables = new LinkedHashSet<>(Builder.this.tableNames);
             final StringBuilder fromClause = new StringBuilder().append(" FROM ");
-            final String select = composeSelect(fromClause, unaliasedTables);
-
+            final String select = appendSelectAndFrom(fromClause, unaliasedTables);
             if (statements.isEmpty())
             {
-                return new StringBuilder(select).append(removeLastComma(fromClause)).toString();
+                return new StringBuilder(select).append(removeLastComma(fromClause)).append(getGroupByClause()).append(getOrderByClause()).toString();
             }
 
             final StringBuilder whereClause = new StringBuilder().append(" WHERE ");
+            appendFromAndWhere(unaliasedTables, fromClause, whereClause);
 
+            final StringBuilder groupByClause = getGroupByClause();
+            final StringBuilder orderByClause = getOrderByClause();
+            
+            return new StringBuilder(select).append(fromClause).append(whereClause).append(groupByClause).append(orderByClause)
+                    .toString();
+        }
+
+        private StringBuilder getOrderByClause()
+        {
+            final StringBuilder orderByClause = new StringBuilder();
+            if (!orderBy.isEmpty())
+            {
+                orderByClause.append(" ORDER BY ");
+                for (Iterator<CapturedStatement> it = orderBy.iterator(); it.hasNext();)
+                {
+                    final CapturedStatement next = it.next();
+                    orderByClause.append(toAlias(getTableName(next.lhs))).append(".").append(getColumnName(next.lhs));
+                    if (it.hasNext())
+                        orderByClause.append(", ");
+                }
+                orderByClause.append(" ").append(order.name());
+            }
+            return orderByClause;
+        }
+
+        private StringBuilder getGroupByClause()
+        {
+            final StringBuilder groupByClause = new StringBuilder();
+            if (!groupBy.isEmpty())
+            {
+                groupByClause.append(" GROUP BY ");
+                for (Iterator<CapturedStatement> it = groupBy.iterator(); it.hasNext();)
+                {
+                    final CapturedStatement next = it.next();
+                    groupByClause.append(toAlias(getTableName(next.lhs))).append(".").append(getColumnName(next.lhs));
+                    if (it.hasNext())
+                        groupByClause.append(", ");
+                }
+            }
+            return groupByClause;
+        }
+
+        private void appendFromAndWhere(final Set<String> unaliasedTables, final StringBuilder fromClause,
+                final StringBuilder whereClause)
+        {
             final Iterator<CapturedStatement> it = statements.iterator();
             while (it.hasNext())
             {
@@ -495,7 +614,6 @@ public class EntityMatcher
             }
 
             removeLastComma(fromClause);
-            return new StringBuilder(select).append(fromClause).append(whereClause).toString();
         }
 
         // It is actually easier to remove a known last comma, that to handle all unknowns while
@@ -505,11 +623,21 @@ public class EntityMatcher
             return fromClause.replace(fromClause.length() - 2, fromClause.length(), "");
         }
 
-        private String composeSelect(StringBuilder fromClause, Set<String> unaliasedTables)
+        private String appendSelectAndFrom(StringBuilder fromClause, Set<String> unaliasedTables)
         {
-            return !customSelect.isEmpty() ? createCustomSelect(fromClause, unaliasedTables)
-                    : isNativeQuery ? createNativeSelect(fromClause, unaliasedTables) : "SELECT ".concat(toAlias(retType
-                            .getSimpleName()));
+            return !select.isEmpty() ? createCustomSelect(fromClause, unaliasedTables)
+                    : isNativeQuery ? createNativeSelect(fromClause, unaliasedTables) : createSimpleSelect(fromClause,
+                            unaliasedTables);
+        }
+
+        private String createSimpleSelect(StringBuilder fromClause, Set<String> unaliasedTables)
+        {
+            final String tableName = getTableName(retType);
+            final String tableAlias = toAlias(tableName);
+            unaliasedTables.remove(tableName);
+
+            fromClause.append(tableName).append(" ").append(tableAlias).append(", ");
+            return "SELECT ".concat(tableAlias);
         }
 
         private String createNativeSelect(StringBuilder fromClause, Set<String> unaliasedTables)
@@ -539,7 +667,7 @@ public class EntityMatcher
         private String createCustomSelect(StringBuilder fromClause, Set<String> unaliasedTables)
         {
             final StringBuilder sb = new StringBuilder("SELECT ");
-            for (Iterator<CapturedStatement> it = customSelect.iterator(); it.hasNext();)
+            for (Iterator<CapturedStatement> it = select.iterator(); it.hasNext();)
             {
                 final CapturedStatement next = it.next();
                 final String tableName = getTableName(next.lhs);
