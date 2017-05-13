@@ -124,7 +124,7 @@ public class Builder<T> extends InvokationCapturer
     Builder<T> processLhsStatements(Mode mode, Object... os)
     {
         final List<CapturedStatement> capturedStatements = mode(mode);
-        capturedStatements.clear(); // doesn't allow incremental orderBy's.
+        capturedStatements.clear(); 
         Arrays.asList(os).forEach(o -> capturedStatements.add(captureLhsStatement(o)));
         return this;
     }
@@ -247,7 +247,6 @@ public class Builder<T> extends InvokationCapturer
         return createUnpackedSelectQuery(clazz);
     }
 
-    // Select all fields except those transient, final or static.
     private void selectFields(Class<?> clazz)
     {
         final List<CapturedStatement> select = mode(SELECT);
