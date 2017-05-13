@@ -1,22 +1,25 @@
 package org.entitymatcher;
 
+import static org.entitymatcher.Builder.Mode.GROUPBY;
+import static org.entitymatcher.Builder.Mode.ORDERBY;
+import static org.entitymatcher.Builder.Mode.SELECT;
+import static org.entitymatcher.Builder.Mode.STATEMENTS;
+import static org.entitymatcher.Builder.Order.ASC;
+import static org.entitymatcher.EntityMatcher.camelDown;
+import static org.entitymatcher.EntityMatcher.camelUp;
+import static org.entitymatcher.EntityMatcher.isGetter;
+import static org.entitymatcher.EntityMatcher.toAlias;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Observable;
-import java.util.Observer;
 import java.util.Set;
-import java.util.Stack;
 import java.util.regex.Matcher;
-
-import javassist.util.proxy.MethodHandler;
-import javassist.util.proxy.ProxyObject;
 
 import javax.persistence.Column;
 import javax.persistence.EntityManager;
@@ -24,46 +27,37 @@ import javax.persistence.Query;
 import javax.persistence.Table;
 import javax.persistence.Transient;
 
-import org.entitymatcher.EntityMatcher.Capture;
-import org.entitymatcher.EntityMatcher.CapturedStatement;
-import org.entitymatcher.EntityMatcher.ObservableInvokation;
-import org.entitymatcher.EntityMatcher.PreparedQuery;
+import org.entitymatcher.Statement.Part;
 
 import com.google.common.base.Function;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.MultimapBuilder;
 
-// TODO: Cleanup
-public class Builder<T> implements Observer
+public class Builder<T> extends InvokationCapturer
 {
-    private static enum Mode
+    enum Mode
     {
-        SELECT, WHERE_COMPOSER, HAVING_COMPOSER, GROUPBY, ORDERBY
+        SELECT, STATEMENTS, HAVING, GROUPBY, ORDERBY
     };
 
-    private Class<T> retType;
-    private boolean isNativeQuery = false;
-    private final Stack<Capture> captures = new Stack<>();
+    public enum Order
+    {
+        ASC, DESC
+    };
+
+    private final Class<T> defaultRetType;
+    private boolean nativeQuery = false;
     private final ParameterBinding params = new JpqlBinding();
     private final Set<String> tableNames = new LinkedHashSet<>();
     private final ListMultimap<Mode, CapturedStatement> map = MultimapBuilder.linkedHashKeys().arrayListValues().build();
-    private Builder.ORDER_BY order = null;
+    private Order order = null;
 
-    @SuppressWarnings("unchecked")
     Builder(T main, Object... others)
     {
-        assert EntityMatcher.proxy2Class.containsKey(main.getClass()) //
-        : "Cannot do captures on the provided class " + main.getClass().getSimpleName()
-                + ". It must be created via EntityMatcher#matcher()";
-
-        observe(main);
-        observe(others);
-
-        tableNames.add(EntityMatcher.proxy2Class.get(main.getClass()).getSimpleName());
-        Arrays.asList(others).forEach(o -> tableNames.add(EntityMatcher.proxy2Class.get(o.getClass()).getSimpleName()));
-
-        retType = (Class<T>) EntityMatcher.proxy2Class.get(main.getClass());
+        defaultRetType = observe(main);
+        tableNames.add(defaultRetType.getSimpleName());
+        observe(others).forEach(c -> tableNames.add(c.getSimpleName()));
     }
 
     /**
@@ -76,87 +70,85 @@ public class Builder<T> implements Observer
      */
     public Builder<T> select(Object... os)
     {
-        map.get(Mode.SELECT).clear(); // doesn't allow incremental selects.
-        for (int i = 0; i < os.length; i++)
-        {
-            final Capture lastCapture = getLastCapture();
-            assert lastCapture == null : "Builders are not thread safe.";
-
-            if (os[i] instanceof LhsRhsStatement) map.put(Mode.SELECT, new CapturedStatement(lastCapture, null,
-                    (LhsRhsStatement<?>) os[i]));
-            else map.put(Mode.SELECT, new CapturedStatement(lastCapture, null, null));
-        }
-        return this;
+        return processLhsStatements(SELECT, os);
     }
-
-    public enum ORDER_BY
-    {
-        ASC, DESC
-    };
 
     public Builder<T> orderBy(Object... os)
     {
-        return orderBy(ORDER_BY.ASC, os);
+        return orderBy(ASC, os);
     }
 
-    public Builder<T> orderBy(Builder.ORDER_BY order, Object... os)
+    public Builder<T> orderBy(Order order, Object... os)
     {
-        map.get(Mode.ORDERBY).clear(); // doesn't allow incremental orderBy's.
         this.order = order;
-        for (int i = 0; i < os.length; i++)
-        {
-            final Capture lastCapture = getLastCapture();
-            assert lastCapture == null : "Builders are not thread safe.";
-            map.put(Mode.ORDERBY, new CapturedStatement(lastCapture, null, null));
-        }
-        return this;
+        return processLhsStatements(ORDERBY, os);
     }
 
     public Builder<T> groupBy(Object... os)
     {
-        map.get(Mode.GROUPBY).clear(); // doesn't allow incremental groupBy's.
-        for (int i = 0; i < os.length; i++)
-        {
-            final Capture lastCapture = getLastCapture();
-            assert lastCapture == null : "Builders are not thread safe.";
-            map.put(Mode.GROUPBY, new CapturedStatement(lastCapture, null, null));
-        }
+        return processLhsStatements(GROUPBY, os);
+    }
+
+    public Builder<T> nativeQuery(boolean b)
+    {
+        nativeQuery = b;
         return this;
     }
 
-    public <E> StatementComposer match(E getter, LhsRhsStatement<? extends E> statement)
+    private List<CapturedStatement> mode(Mode mode)
+    {
+        return map.get(mode);
+    }
+
+    Builder<T> processLhsStatements(Mode mode, Object... os)
+    {
+        final List<CapturedStatement> capturedStatements = mode(mode);
+        capturedStatements.clear(); // doesn't allow incremental orderBy's.
+        Arrays.asList(os).forEach(o -> capturedStatements.add(captureLhsStatement(o)));
+        return this;
+    }
+
+    CapturedStatement captureLhsStatement(Object o)
+    {
+        if (o instanceof LhsRhsStatement) return new CapturedStatement(extractTableColumn(getLastCapture()), null,
+                (LhsRhsStatement<?>) o);
+        else return new CapturedStatement(extractTableColumn(getLastCapture()), null, null);
+    }
+
+    public <E> LhsRhsStatementBuilder match(E getter, LhsRhsStatement<? extends E> statement)
     {
         return match(statement);
     }
 
-    public <E> StatementComposer match(LhsRhsStatement<E> statement)
+    public <E> LhsRhsStatementBuilder match(LhsRhsStatement<E> statement)
     {
-        final Capture lhs = getLastCapture();
-        final Capture rhs = getLastCapture();
+        final TableColumn lhs = extractTableColumn(getLastCapture());
+        final TableColumn rhs = extractTableColumn(getLastCapture());
 
-        assert lhs == null && rhs == null : "Nothing captured. Likely an invalid statement (example: 'builder().match(like(5))')";
-        return new StatementComposer(new CapturedStatement(lhs, rhs, statement));
+        return new LhsRhsStatementBuilder(new CapturedStatement(lhs, rhs, statement));
     }
 
-    String toDescription(Capture capture)
+    private final TableColumn nullValue = new TableColumn(null, null);
+
+    private TableColumn extractTableColumn(Capture capture)
     {
-        return capture == null ? null : capture.method.getDeclaringClass().getSimpleName().toLowerCase() + "."
-                + getColumnName(capture.method);
+        if (capture == null) return nullValue;
+        else return new TableColumn(getTable(capture), getColumn(capture));
     }
 
-    String getTableName(Capture c)
+    private String getTableName(TableColumn tc)
     {
-        return c == null ? null : getTableName(c.method);
+        return tc != null && tc.table != null ? getTableName(tc.table) : null;
     }
 
-    private String getTableName(Method m)
+    private Class<?> getTable(Capture c)
     {
-        return getTableName(m.getDeclaringClass());
+        return c == null ? null : c.method.getDeclaringClass();
     }
 
     private String getTableName(Class<?> clazz)
     {
-        if (isNativeQuery)
+        if (nativeQuery)
         {
             final Table table = clazz.getAnnotation(Table.class);
             final String tableName = table == null || table.name().isEmpty() ? clazz.getSimpleName() : table.name();
@@ -165,20 +157,30 @@ public class Builder<T> implements Observer
         else return clazz.getSimpleName();
     }
 
-    String getColumnName(Capture c)
+    private String getColumnName(TableColumn tc)
     {
-        return c == null ? null : getColumnName(c.method);
+        return tc != null && tc.column != null ? getColumnName(tc.column) : null;
     }
 
-    private String getColumnName(Method m)
+    private Class<?> getColumnType(TableColumn tc)
     {
-        final Matcher matcher = EntityMatcher.isGetter.matcher(m.getName());
+        return tc != null && tc.column != null ? tc.column.getType() : null;
+    }
+
+    private Field getColumn(Capture c)
+    {
+        return c == null ? null : getColumn(c.method);
+    }
+
+    private Field getColumn(Method m)
+    {
+        final Matcher matcher = isGetter.matcher(m.getName());
         if (matcher.matches())
         {
-            final String fieldName = matcher.group(2).substring(0, 1).toLowerCase().concat(matcher.group(2).substring(1));
-            return isNativeQuery ? getColumnName(getField(m.getDeclaringClass(), fieldName)) : fieldName;
+            final String fieldName = camelDown(matcher.group(2));
+            return getField(m.getDeclaringClass(), fieldName);
         }
-        throw new RuntimeException("Not a getter '" + m.getName() + "'");
+        throw new IllegalArgumentException("Not a getter '" + m.getName() + "'");
     }
 
     private Field getField(Class<?> type, String name)
@@ -189,52 +191,18 @@ public class Builder<T> implements Observer
         }
         catch (NoSuchFieldException | SecurityException e)
         {
-            throw new RuntimeException(type.getName() + "doesn't follow the java beans convention for field: " + name);
+            throw new IllegalArgumentException(type.getName() + "doesn't follow the java beans convention for field: " + name);
         }
     }
 
     private String getColumnName(Field f)
     {
-        if (isNativeQuery)
+        if (nativeQuery)
         {
             final Column c = f.getAnnotation(Column.class);
             return c == null || c.name().isEmpty() ? f.getName() : c.name();
         }
         else return f.getName();
-    }
-
-    Capture getLastCapture()
-    {
-        return captures.isEmpty() ? null : captures.pop();
-    }
-
-    private void observe(Object... os)
-    {
-        for (Object o : os)
-        {
-            if (o instanceof ProxyObject)
-            {
-                final MethodHandler mh = ((ProxyObject) o).getHandler();
-                if (mh instanceof ObservableInvokation)
-                {
-                    ((ObservableInvokation) mh).addObserver(this);
-                    continue;
-                }
-            }
-            throw new RuntimeException("Must be instantiated with EntityMatcher#matcher()");
-        }
-    }
-
-    @Override
-    public void update(Observable o, Object arg)
-    {
-        captures.push((Capture) arg);
-    }
-
-    public Builder<T> nativeQuery(boolean b)
-    {
-        isNativeQuery = b;
-        return this;
     }
 
     @Override
@@ -245,321 +213,162 @@ public class Builder<T> implements Observer
 
     public PreparedQuery<T> build()
     {
-        if (isNativeQuery)
-            return build(retType);
+        return build(defaultRetType);
+    }
 
-        return new PreparedQuery<T>()
+    public <E> PreparedQuery<E> build(Class<E> clazz)
+    {
+        if (mode(SELECT).isEmpty())
+        {
+            if (nativeQuery) selectFields(clazz);
+            else return createPackedSelectQuery(clazz);
+        }
+        return createUnpackedSelectQuery(clazz);
+    }
+
+    // Select all fields except those transient, final or static.
+    private void selectFields(Class<?> clazz)
+    {
+        final List<CapturedStatement> select = mode(SELECT);
+        for (Field f : clazz.getDeclaredFields())
+        {
+            if (isTransient(f))
+                continue;
+
+            select.add(new CapturedStatement(new TableColumn(clazz, f), null, null));
+        }
+    }
+
+    // JPA transient considered fields (final, static, transient or annotated as Transient)
+    private boolean isTransient(Field f)
+    {
+        final int mod = f.getModifiers();
+        return f.isAnnotationPresent(Transient.class) || Modifier.isFinal(mod)
+                || Modifier.isStatic(mod) || Modifier.isTransient(mod);
+    }
+
+    private <E> PreparedQueryImpl<E> createPackedSelectQuery(Class<E> clazz)
+    {
+        return new PreparedQueryImpl<E>()
         {
             @Override
             @SuppressWarnings("unchecked")
-            public T getSingleMatching(EntityManager em)
+            public E getSingleMatching(EntityManager em)
             {
-                return (T) createQuery(em, isNativeQuery).getSingleResult();
+                return (E) createQuery(em, nativeQuery).getSingleResult();
             }
 
             @Override
             @SuppressWarnings("unchecked")
-            public List<T> getMatching(EntityManager em)
+            public List<E> getMatching(EntityManager em)
             {
-                return createQuery(em, isNativeQuery).getResultList();
-            }
-
-            private Query createQuery(EntityManager em, boolean isNative)
-            {
-                final String queryString = composeStringQuery();
-                final Query query = isNative ? em.createNativeQuery(queryString) : em.createQuery(queryString);
-                params.solveQuery(queryString, query);
-                return query;
-            }
-
-            @Override
-            public String toString()
-            {
-                return composeStringQuery();
+                return createQuery(em, nativeQuery).getResultList();
             }
         };
     }
 
-    @SuppressWarnings("unchecked")
-    public <E> PreparedQuery<E> build(Class<E> clazz)
+    private <E> PreparedQueryImpl<E> createUnpackedSelectQuery(Class<E> clazz)
     {
-        if (clazz.equals(retType) && !isNativeQuery)
-            return (PreparedQuery<E>) build();
-
-        return new PreparedQuery<E>()
+        return new PreparedQueryImpl<E>()
         {
+            @SuppressWarnings("unchecked")
             private Function<Object[], E> copyProperties = os ->
             {
                 try
                 {
-                    assert os.length == map.get(Mode.SELECT).size() : "Request / response column size mismatch.";
-
-                    // If length == 1, it could be two options:
-                    // 1. List<Integer> is = ...build(Integer.class).getMatching(em)
-                    // 2. List<Foo> foos = ...build(Foo.class).getMatching(em)
-                    // The first case is just a cast, the second case the class Foo has a
-                    // property
-                    // named exactly as the requested column field, and we must reflect its
-                    // #setName(integer).
-
-                    // If return is null or its type is assignable to clazz, just cast it.
+                    // If the value is null or its type is assignable to clazz, just cast it.
                     if (os.length == 1)
                     {
-                        final Object o = os[0];
-                        if (o == null)
-                        return null;
-                        else if (clazz.isAssignableFrom(o.getClass()))
-                            return (E) o; // safe
+                        if (os[0] == null) return null;
+                        else if (clazz.isAssignableFrom(os[0].getClass())) return (E) os[0]; // safe
                     }
 
+                    // If multiple values or single not assignable, assign the received values in
+                    // the selected order to their corresponding properties.
                     final E e = clazz.newInstance();
-                    if (map.get(Mode.SELECT).isEmpty())
+                    for (int i = 0; i < os.length; i++)
                     {
-                        int i = 0;
-                        // FIXME review all this.
-                        for (Field f : clazz.getDeclaredFields())
-                        {
-                            if (f.isAnnotationPresent(Transient.class))
-                                continue;
-
-                            if (os[i] == null)
-                            {
-                                i++;
-                                continue;
-                            }
-
-                            final int rank = NumberConversion.getRank(f.getType());
-                            final Object o = rank >= 0 ? NumberConversion.convert(os[i], rank) : os[i];
-                            f.set(e, o);
-                            i++;
-                        }
-                    }
-                    else
-                    {
-                        for (int i = 0; i < os.length; i++)
-                        {
-                            final CapturedStatement c = map.get(Mode.SELECT).get(i);
-                            final Class<?> paramType = c.lhs.method.getReturnType();
-                            final String setterName = c.lhs.method.getName().replaceFirst("(is|get)", "set");
-                            final Method setterMethod = clazz.getMethod(setterName, paramType);
-                            setterMethod.invoke(e, os[i]);
-                        }
+                        final CapturedStatement c = mode(SELECT).get(i);
+                        clazz.getMethod("set".concat(camelUp(getColumnName(c.lhs))), getColumnType(c.lhs)).invoke(e, os[i]);
                     }
                     return e;
                 }
                 catch (InstantiationException | IllegalAccessException | NoSuchMethodException | SecurityException
                         | IllegalArgumentException | InvocationTargetException e)
                 {
-                    assert false : "The class provided does not contain the requested named fields, is not a java bean or hasn't a default public ctor";
+                    throw new IllegalArgumentException(
+                            "The class provided does not contain the requested named fields, is not a java bean or hasn't a default public ctor");
                 }
-                return null;
             };
 
             @Override
             public E getSingleMatching(EntityManager em)
             {
-                final Object singleResult = createQuery(em, isNativeQuery).getSingleResult();
+                final Object singleResult = createQuery(em, nativeQuery).getSingleResult();
                 if (singleResult != null)
-                    if (singleResult.getClass().isArray())
-                    return copyProperties.apply((Object[]) singleResult);
-                    else
-                    return copyProperties.apply(new Object[] { singleResult });
-
+                {
+                    if (singleResult.getClass().isArray()) return copyProperties.apply((Object[]) singleResult);
+                    else return copyProperties.apply(new Object[] { singleResult });
+                }
                 return null;
             }
 
+            @SuppressWarnings("unchecked")
             @Override
             public List<E> getMatching(EntityManager em)
             {
-                return Lists.transform(createQuery(em, isNativeQuery).getResultList(), copyProperties);
-            }
-
-            private Query createQuery(EntityManager em, boolean isNative)
-            {
-                final String queryString = composeStringQuery();
-                final Query query = isNative ? em.createNativeQuery(queryString) : em.createQuery(queryString);
-                params.solveQuery(queryString, query);
-                return query;
-            }
-
-            @Override
-            public String toString()
-            {
-                return composeStringQuery();
+                return Lists.transform(createQuery(em, nativeQuery).getResultList(), copyProperties);
             }
         };
     }
 
-    private String composeStringQuery()
+    String composeStringQuery()
     {
-        final List<CapturedStatement> statements = map.get(Mode.WHERE_COMPOSER);
-
-        Collections.sort(statements, new Comparator<CapturedStatement>()
-        {
-            @Override
-            public int compare(CapturedStatement o1, CapturedStatement o2)
-            {
-                return Boolean.compare(o1.statement.isJoinRelationship(), o2.statement.isJoinRelationship());
-            }
-        });
-
         final Set<String> unaliasedTables = new LinkedHashSet<>(Builder.this.tableNames);
+        final StringBuilder selectClause = new StringBuilder().append("SELECT ");
         final StringBuilder fromClause = new StringBuilder().append(" FROM ");
-        final String select = appendSelectAndFrom(fromClause, unaliasedTables);
-        if (statements.isEmpty())
-        {
-            return new StringBuilder(select).append(removeLastComma(fromClause)).append(getGroupByClause())
-                    .append(getOrderByClause()).toString();
-        }
+        processSelect(selectClause, fromClause, unaliasedTables);
 
-        final StringBuilder whereClause = new StringBuilder().append(" WHERE ");
-        appendFromAndWhere(unaliasedTables, fromClause, whereClause);
+        final StringBuilder whereClause = new StringBuilder();
+        processStatements(whereClause, fromClause, unaliasedTables);
 
-        final StringBuilder groupByClause = getGroupByClause();
-        final StringBuilder orderByClause = getOrderByClause();
+        final StringBuilder groupBy = new StringBuilder();
+        processGroupBy(groupBy);
 
-        return new StringBuilder(select).append(fromClause).append(whereClause).append(groupByClause).append(orderByClause)
+        final StringBuilder orderBy = new StringBuilder();
+        processOrderBy(orderBy);
+
+        return new StringBuilder(selectClause).append(removeLastComma(fromClause)).append(whereClause).append(groupBy)
+                .append(orderBy)
                 .toString();
     }
 
-    private StringBuilder getOrderByClause()
+    private void processSelect(StringBuilder selectClause, StringBuilder fromClause, Set<String> unaliasedTables)
     {
-        final StringBuilder orderByClause = new StringBuilder();
-        if (!map.get(Mode.ORDERBY).isEmpty())
+        if (mode(SELECT).isEmpty())
         {
-            orderByClause.append(" ORDER BY ");
-            for (Iterator<CapturedStatement> it = map.get(Mode.ORDERBY).iterator(); it.hasNext();)
-            {
-                final CapturedStatement next = it.next();
-                orderByClause.append(EntityMatcher.toAlias(getTableName(next.lhs))).append(".").append(getColumnName(next.lhs));
-                if (it.hasNext())
-                    orderByClause.append(", ");
-            }
-            orderByClause.append(" ").append(order.name());
+            if (nativeQuery) appendUnpackedSelect(selectClause, fromClause, unaliasedTables);
+            else appendPackedSelect(selectClause, fromClause, unaliasedTables);
         }
-        return orderByClause;
+        else appendUnpackedSelect(selectClause, fromClause, unaliasedTables);
     }
 
-    private StringBuilder getGroupByClause()
+    private void appendPackedSelect(StringBuilder selectClause, StringBuilder fromClause, Set<String> unaliasedTables)
     {
-        final StringBuilder groupByClause = new StringBuilder();
-        if (!map.get(Mode.GROUPBY).isEmpty())
-        {
-            groupByClause.append(" GROUP BY ");
-            for (Iterator<CapturedStatement> it = map.get(Mode.GROUPBY).iterator(); it.hasNext();)
-            {
-                final CapturedStatement next = it.next();
-                groupByClause.append(EntityMatcher.toAlias(getTableName(next.lhs))).append(".").append(getColumnName(next.lhs));
-                if (it.hasNext())
-                    groupByClause.append(", ");
-            }
-        }
-        return groupByClause;
-    }
-
-    private void appendFromAndWhere(final Set<String> unaliasedTables, final StringBuilder fromClause,
-            final StringBuilder whereClause)
-    {
-        final Iterator<CapturedStatement> it = map.get(Mode.WHERE_COMPOSER).iterator();
-        while (it.hasNext())
-        {
-            final CapturedStatement next = it.next();
-            // In join relationships the main table is resolved within FROM, while joined
-            // tables are obtained from the linked properties.
-            // Example : SELECT c FROM Parent p JOIN p.children c ON p.id = c.parentid
-            if (next.statement.isJoinRelationship())
-            {
-                final String lhsTableName = getTableName(next.lhs);
-                fromClause.append(
-                        Statement.toString(next.statement.toJpql(EntityMatcher.toAlias(lhsTableName), getColumnName(next.lhs),
-                                EntityMatcher.toAlias(getTableName(next.rhs)), getColumnName(next.rhs), params))).append(", ");
-
-                // lhsTableName has been assigned an alias in the FROM clause
-                unaliasedTables.remove(lhsTableName);
-            }
-            else
-            {
-                // Add aliases to the FROM clause if needed
-                final String lhsTableName = getTableName(next.lhs);
-                final String rhsTableName = getTableName(next.rhs);
-
-                if (lhsTableName != null && unaliasedTables.contains(lhsTableName))
-                {
-                    fromClause.append(lhsTableName).append(" ").append(EntityMatcher.toAlias(lhsTableName)).append(", ");
-                    unaliasedTables.remove(lhsTableName);
-                }
-                if (rhsTableName != null && unaliasedTables.contains(rhsTableName))
-                {
-                    fromClause.append(rhsTableName).append(" ").append(EntityMatcher.toAlias(rhsTableName)).append(", ");
-                    unaliasedTables.remove(rhsTableName);
-                }
-
-                // Add WHERE conditions
-                whereClause.append(Statement.toString(next.statement.toJpql(EntityMatcher.toAlias(lhsTableName),
-                        getColumnName(next.lhs),
-                        EntityMatcher.toAlias(rhsTableName), getColumnName(next.rhs), params)));
-            }
-        }
-
-        removeLastComma(fromClause);
-    }
-
-    // It is actually easier to remove a known last comma, that to handle all unknowns while
-    // iterating (transient, no statements, joins, ...)
-    private StringBuilder removeLastComma(final StringBuilder fromClause)
-    {
-        return fromClause.replace(fromClause.length() - 2, fromClause.length(), "");
-    }
-
-    private String appendSelectAndFrom(StringBuilder fromClause, Set<String> unaliasedTables)
-    {
-        return !map.get(Mode.SELECT).isEmpty() ? createCustomSelect(fromClause, unaliasedTables)
-                : isNativeQuery ? createNativeSelect(fromClause, unaliasedTables) : createSimpleSelect(fromClause,
-                        unaliasedTables);
-    }
-
-    private String createSimpleSelect(StringBuilder fromClause, Set<String> unaliasedTables)
-    {
-        final String tableName = getTableName(retType);
-        final String tableAlias = EntityMatcher.toAlias(tableName);
+        final String tableName = getTableName(defaultRetType);
         unaliasedTables.remove(tableName);
 
-        fromClause.append(tableName).append(" ").append(tableAlias).append(", ");
-        return "SELECT ".concat(tableAlias);
+        selectClause.append(toAlias(tableName));
+        fromClause.append(tableName).append(" ").append(toAlias(tableName)).append(", ");
     }
 
-    private String createNativeSelect(StringBuilder fromClause, Set<String> unaliasedTables)
+    private String appendUnpackedSelect(StringBuilder selectClause, StringBuilder fromClause, Set<String> unaliasedTables)
     {
-        final StringBuilder sb = new StringBuilder("SELECT ");
-        final String tableName = getTableName(retType);
-        final String tableAlias = EntityMatcher.toAlias(tableName);
-
-        fromClause.append(tableName).append(" ").append(tableAlias).append(", ");
-        unaliasedTables.remove(tableName);
-
-        // We can use reflection since calls are deterministic (even when it is not
-        // guaranteed they follow the declaration order)
-        for (Field f : retType.getDeclaredFields())
-        {
-            if (f.isAnnotationPresent(Transient.class))
-                continue;
-
-            final String name = getColumnName(f);
-            sb.append(tableAlias).append(".").append(name).append(", ");
-        }
-
-        removeLastComma(sb);
-        return sb.toString();
-    }
-
-    private String createCustomSelect(StringBuilder fromClause, Set<String> unaliasedTables)
-    {
-        final StringBuilder sb = new StringBuilder("SELECT ");
-        for (Iterator<CapturedStatement> it = map.get(Mode.SELECT).iterator(); it.hasNext();)
+        for (Iterator<CapturedStatement> it = mode(SELECT).iterator(); it.hasNext();)
         {
             final CapturedStatement next = it.next();
             final String tableName = getTableName(next.lhs);
-            final String tableAlias = EntityMatcher.toAlias(tableName);
+            final String tableAlias = toAlias(tableName);
             final String columnName = getColumnName(next.lhs);
 
             if (unaliasedTables.contains(tableName))
@@ -568,61 +377,201 @@ public class Builder<T> implements Observer
                 unaliasedTables.remove(tableName);
             }
 
-            if (next.statement != null) sb.append(Statement.toString(next.statement.toJpql(tableAlias, columnName, null,
-                    null, params)));
-            else sb.append(tableAlias).append(".").append(columnName);
+            if (next.statement != null) selectClause.append(Statement.toString(next.statement.toJpql(tableAlias, columnName,
+                    null, null, params)));
+            else selectClause.append(tableAlias).append(".").append(columnName);
 
-            sb.append(it.hasNext() ? ", " : "");
+            selectClause.append(it.hasNext() ? ", " : "");
         }
-        return sb.toString();
+        return selectClause.toString();
     }
 
-    class StatementComposer
+    private void processStatements(StringBuilder whereClause, StringBuilder fromClause, Set<String> unaliasedTables)
     {
-        StatementComposer(CapturedStatement statement)
+        final List<CapturedStatement> statements = mode(STATEMENTS);
+        if (!statements.isEmpty())
         {
-            map.put(Mode.WHERE_COMPOSER, statement);
+            whereClause.append(" WHERE ");
+            for (CapturedStatement captured : statements)
+            {
+                final LhsRhsStatement<?> lhsRhs = captured.statement;
+                if (lhsRhs.isJoinRelationship())
+                {
+                    final String lhsTableName = getTableName(captured.lhs);
+                    final List<Part> jpql = lhsRhs.toJpql(toAlias(lhsTableName), getColumnName(captured.lhs),
+                            toAlias(getTableName(captured.rhs)), getColumnName(captured.rhs), params);
+                    fromClause.append(Statement.toString(jpql)).append(", ");
+                    // lhsTableName has been assigned an alias in the FROM clause
+                    unaliasedTables.remove(lhsTableName);
+                }
+                else
+                {
+                    // Add aliases to the FROM clause if needed
+                    final String lhsTableName = getTableName(captured.lhs);
+                    final String rhsTableName = getTableName(captured.rhs);
+
+                    if (lhsTableName != null && unaliasedTables.contains(lhsTableName))
+                    {
+                        fromClause.append(lhsTableName).append(" ").append(toAlias(lhsTableName)).append(", ");
+                        unaliasedTables.remove(lhsTableName);
+                    }
+                    if (rhsTableName != null && unaliasedTables.contains(rhsTableName))
+                    {
+                        fromClause.append(rhsTableName).append(" ").append(toAlias(rhsTableName)).append(", ");
+                        unaliasedTables.remove(rhsTableName);
+                    }
+
+                    // Add WHERE conditions
+                    final List<Part> jpql = lhsRhs.toJpql(toAlias(lhsTableName), getColumnName(captured.lhs),
+                            toAlias(rhsTableName), getColumnName(captured.rhs), params);
+                    whereClause.append(Statement.toString(jpql));
+                }
+            }
+        }
+    }
+
+    private void processOrderBy(StringBuilder orderBy)
+    {
+        final List<CapturedStatement> captures = mode(ORDERBY);
+        if (!captures.isEmpty())
+        {
+            orderBy.append(" ORDER BY ");
+            appendLhsStatements(orderBy, captures.iterator());
+            orderBy.append(" ").append(order.name());
+        }
+    }
+
+    private void processGroupBy(StringBuilder groupBy)
+    {
+        final List<CapturedStatement> captures = mode(GROUPBY);
+        if (!captures.isEmpty())
+        {
+            groupBy.append(" GROUP BY ");
+            appendLhsStatements(groupBy, captures.iterator());
+        }
+    }
+
+    private void appendLhsStatements(StringBuilder sb, Iterator<CapturedStatement> it)
+    {
+        for (; it.hasNext();)
+        {
+            final CapturedStatement next = it.next();
+            sb.append(toAlias(getTableName(next.lhs))).append(".").append(getColumnName(next.lhs));
+            if (it.hasNext())
+                sb.append(", ");
+        }
+    }
+
+    // It is actually easier to remove a known last comma, that to handle all unknowns while
+    // iterating (transient, no statements, joins, ...)
+    private StringBuilder removeLastComma(final StringBuilder sb)
+    {
+        return sb.length() == 0 ? sb : sb.replace(sb.length() - 2, sb.length(), "");
+    }
+
+    public static interface PreparedQuery<T>
+    {
+        T getSingleMatching(EntityManager em);
+
+        List<T> getMatching(EntityManager em);
+    }
+
+    static class TableColumn
+    {
+        final Class<?> table;
+        final Field column;
+
+        TableColumn(Class<?> table, Field column)
+        {
+            this.table = table;
+            this.column = column;
+        }
+    }
+
+    static class CapturedStatement
+    {
+        final TableColumn lhs;
+        final TableColumn rhs;
+        final LhsRhsStatement<?> statement;
+
+        public CapturedStatement(TableColumn lhs, TableColumn rhs, LhsRhsStatement<?> statement)
+        {
+            if (lhs == null && rhs == null && statement == null)
+                throw new IllegalArgumentException("Nothing captured.");
+
+            this.lhs = lhs;
+            this.rhs = rhs;
+            this.statement = statement;
+        }
+    }
+
+    abstract class PreparedQueryImpl<E> implements PreparedQuery<E>
+    {
+        protected Query createQuery(EntityManager em, boolean nativeQuery)
+        {
+            final String queryString = composeStringQuery();
+            final Query query = nativeQuery ? em.createNativeQuery(queryString) : em.createQuery(queryString);
+            params.solveQuery(queryString, query);
+            return query;
         }
 
-        public StatementComposer nativeQuery(boolean b)
+        @Override
+        public String toString()
         {
-            isNativeQuery = b;
+            return composeStringQuery();
+        }
+    }
+
+    class LhsRhsStatementBuilder
+    {
+        LhsRhsStatementBuilder(CapturedStatement statement)
+        {
+            map.put(Mode.STATEMENTS, statement);
+        }
+
+        public LhsRhsStatementBuilder nativeQuery(boolean b)
+        {
+            nativeQuery = b;
             return this;
         }
 
-        public <E> StatementComposer and(E getter, LhsRhsStatement<E> statement)
+        public <E> LhsRhsStatementBuilder and(E getter, LhsRhsStatement<E> statement)
         {
             return and(statement);
         }
 
-        public <E> StatementComposer and(LhsRhsStatement<E> statement)
+        public <E> LhsRhsStatementBuilder and(LhsRhsStatement<E> statement)
         {
-            final Capture lhs = getLastCapture();
-            final Capture rhs = getLastCapture();
+            final TableColumn lhs = extractTableColumn(getLastCapture());
+            final TableColumn rhs = extractTableColumn(getLastCapture());
 
-            assert lhs == null && rhs == null //
-            : "Nothing captured. Likely an invalid statement (example: [valid -> 'and(instance.getSmth(), lt(-5).and(gt(5))']; [invalid -> 'and(instance.getSmth(), lt(-5)).and(gt(5)'])";
+            if (lhs == null && rhs == null)
+                throw new IllegalArgumentException(
+                        "Nothing captured. Likely an invalid statement (example: [valid -> 'and(instance.getSmth(), lt(-5).and(gt(5))']; [invalid -> 'and(instance.getSmth(), lt(-5)).and(gt(5)'])");
 
-            map.put(Mode.WHERE_COMPOSER, new CapturedStatement(null, null, LhsStatement.and));
-            map.put(Mode.WHERE_COMPOSER, new CapturedStatement(lhs, rhs, statement));
+            final List<CapturedStatement> statements = mode(STATEMENTS);
+            statements.add(new CapturedStatement(null, null, LhsStatement.and));
+            statements.add(new CapturedStatement(lhs, rhs, statement));
             return this;
         }
 
-        public <E> StatementComposer or(E getter, LhsRhsStatement<E> statement)
+        public <E> LhsRhsStatementBuilder or(E getter, LhsRhsStatement<E> statement)
         {
             return or(statement);
         }
 
-        public <E> StatementComposer or(LhsRhsStatement<E> statement)
+        public <E> LhsRhsStatementBuilder or(LhsRhsStatement<E> statement)
         {
-            final Capture lhs = getLastCapture();
-            final Capture rhs = getLastCapture();
+            final TableColumn lhs = extractTableColumn(getLastCapture());
+            final TableColumn rhs = extractTableColumn(getLastCapture());
 
-            assert lhs == null && rhs == null //
-            : "Nothing captured. Likely an invalid statement (example: [valid -> 'or(instance.getSmth(), like(\"foo\").or(gt(\"bar\"))']; [invalid -> 'or(instance.getSmth(), like(\"foo\")).or(like(\"bar\")'])";
+            if (lhs == null && rhs == null)
+                throw new IllegalArgumentException(
+                        "Nothing captured. Likely an invalid statement (example: [valid -> 'or(instance.getSmth(), like(\"foo\").or(gt(\"bar\"))']; [invalid -> 'or(instance.getSmth(), like(\"foo\")).or(like(\"bar\")'])");
 
-            map.put(Mode.WHERE_COMPOSER, new CapturedStatement(null, null, LhsStatement.or));
-            map.put(Mode.WHERE_COMPOSER, new CapturedStatement(lhs, rhs, statement));
+            final List<CapturedStatement> statements = mode(STATEMENTS);
+            statements.add(new CapturedStatement(null, null, LhsStatement.or));
+            statements.add(new CapturedStatement(lhs, rhs, statement));
             return this;
         }
 

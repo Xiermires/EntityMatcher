@@ -41,7 +41,7 @@ import java.util.Arrays;
 import javax.persistence.EntityManager;
 import javax.persistence.Persistence;
 
-import org.entitymatcher.EntityMatcher.PreparedQuery;
+import org.entitymatcher.Builder.PreparedQuery;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -303,7 +303,7 @@ public class EntityMatcherTest
         final TestJoin tj = EntityMatcher.matcher(TestJoin.class);
         final TestOther to = EntityMatcher.matcher(TestOther.class);
 
-        final Builder<TestClass>.StatementComposer composer = EntityMatcher.builder(tc, tj, to)
+        final Builder<TestClass>.LhsRhsStatementBuilder composer = EntityMatcher.builder(tc, tj, to)
                 .match(tc.getBar(), like("Hello").or(like("Bye"))) //
                 .and(tc.getBar(), gt(1)) //
                 .and(tc.getBar(), join(tj.getBar())).and(tj.getBar(), join(to.getBar()));

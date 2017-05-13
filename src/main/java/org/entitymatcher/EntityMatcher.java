@@ -22,43 +22,16 @@
 package org.entitymatcher;
 
 import java.lang.reflect.Method;
-import java.util.List;
-import java.util.Map;
-import java.util.Observable;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
-
-import javassist.util.proxy.MethodHandler;
-import javassist.util.proxy.ProxyFactory;
-import javassist.util.proxy.ProxyObject;
-
-import javax.persistence.EntityManager;
 
 public class EntityMatcher
 {
-    static final Map<Class<?>, Class<?>> proxy2Class = new ConcurrentHashMap<>();
-
     /**
      * Returns an instance of a class which might be used to match {@link Statements}.
      */
-    @SuppressWarnings("unchecked")
     public static <T> T matcher(Class<T> clazz)
     {
-        final ProxyFactory pf = new ProxyFactory();
-        pf.setSuperclass(clazz);
-        pf.setFilter(m -> isBeanGetter(m));
-        final Class<?> instance = pf.createClass();
-        try
-        {
-            final T newInstance = (T) instance.newInstance();
-            ((ProxyObject) newInstance).setHandler(new ObservableInvokation());
-            proxy2Class.put(newInstance.getClass(), clazz);
-            return newInstance;
-        }
-        catch (InstantiationException | IllegalAccessException e)
-        {
-            return null;
-        }
+        return InvokationCapturer.capturer(clazz, m -> isBeanGetter(m));
     }
 
     /**
@@ -79,56 +52,24 @@ public class EntityMatcher
     {
         return isGetter.matcher(m.getName()).matches();
     }
-
-    static class ObservableInvokation extends Observable implements MethodHandler
-    {
-        @Override
-        public Object invoke(Object self, Method thisMethod, Method proceed, Object[] args) throws Throwable
-        {
-            setChanged();
-            notifyObservers(new Capture(thisMethod));
-            return proceed.invoke(self, args);
-        }
-    }
-
-    static class Capture
-    {
-        Method method;
-
-        public Capture(Method method)
-        {
-            this.method = method;
-        }
-    }
-
-    static class CapturedStatement
-    {
-        final Capture lhs;
-        final Capture rhs;
-        final LhsRhsStatement<?> statement;
-
-        public CapturedStatement(Capture lhs, Capture rhs, LhsRhsStatement<?> statement)
-        {
-            this.lhs = lhs;
-            this.rhs = rhs;
-            this.statement = statement;
-        }
-    }
-
-    public static String toAlias(String table)
+    
+    static String toAlias(String table)
     {
         return table == null ? null : table.toLowerCase();
     }
 
-    public static String toTable(String alias)
+    static String toTable(String alias)
     {
         return alias == null ? null : alias.substring(0, 1).toUpperCase().concat(alias.substring(1));
     }
-
-    public static interface PreparedQuery<T>
+    
+    static String camelUp(String s)
     {
-        T getSingleMatching(EntityManager em);
+        return s.substring(0, 1).toUpperCase().concat(s.substring(1));
+    }
 
-        List<T> getMatching(EntityManager em);
+    static String camelDown(String s)
+    {
+        return s.substring(0, 1).toLowerCase().concat(s.substring(1));
     }
 }
