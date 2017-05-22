@@ -72,4 +72,9 @@ public class EntityMatcher
     {
         return s.substring(0, 1).toLowerCase().concat(s.substring(1));
     }
+    
+    static String tableColumn(String table, String column)
+    {
+        return table == null && column == null ? null : table.concat(".").concat(column);
+    }
 }

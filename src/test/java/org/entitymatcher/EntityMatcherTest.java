@@ -186,14 +186,15 @@ public class EntityMatcherTest
         final PreparedQuery<TestClass> query = builder.match(tc.getBar(), in(Arrays.asList("Hello", "Bye"))).build();
         assertThat(query.getMatching(em).size(), is(2));
     }
-    
+
     @Test
     public void testInNative()
     {
         final TestClass tc = EntityMatcher.matcher(TestClass.class);
         final Builder<TestClass> builder = EntityMatcher.builder(tc);
 
-        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), in(Arrays.asList("Hello", "Bye"))).nativeQuery(true).build();
+        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), in(Arrays.asList("Hello", "Bye"))).nativeQuery(true)
+                .build();
         assertThat(query.getMatching(em).size(), is(2));
     }
 
@@ -242,7 +243,7 @@ public class EntityMatcherTest
         final PreparedQuery<Integer> stringQuery = builder.select(max(tc.getFoo())).build(Integer.class);
         assertThat(stringQuery.getSingleMatching(em), is(6));
     }
-    
+
     @Test
     public void testMin()
     {
@@ -252,7 +253,7 @@ public class EntityMatcherTest
         final PreparedQuery<Integer> stringQuery = builder.select(min(tc.getFoo())).build(Integer.class);
         assertThat(stringQuery.getSingleMatching(em), is(3));
     }
-    
+
     @Test
     public void testCountDistinct()
     {
@@ -260,10 +261,11 @@ public class EntityMatcherTest
         final Builder<TestClass> builder = EntityMatcher.builder(tc);
 
         // FIXME: Conversion operations within the EntityMatcher (this should return an Integer).
-        final PreparedQuery<BigInteger> stringQuery = builder.select(count(distinct(tc.getBar()))).nativeQuery(true).build(BigInteger.class);
+        final PreparedQuery<BigInteger> stringQuery = builder.select(count(distinct(tc.getBar()))).nativeQuery(true)
+                .build(BigInteger.class);
         assertThat(stringQuery.getSingleMatching(em).intValue(), is(3));
     }
-    
+
     @Test
     public void testCount()
     {
@@ -271,10 +273,11 @@ public class EntityMatcherTest
         final Builder<TestClass> builder = EntityMatcher.builder(tc);
 
         // FIXME: Conversion operations within the EntityMatcher (this should return an Integer).
-        final PreparedQuery<BigInteger> stringQuery = builder.select(count(tc.getBar())).nativeQuery(true).build(BigInteger.class);
+        final PreparedQuery<BigInteger> stringQuery = builder.select(count(tc.getBar())).nativeQuery(true)
+                .build(BigInteger.class);
         assertThat(stringQuery.getSingleMatching(em).intValue(), is(3));
     }
-    
+
     @Test
     public void testDistinct()
     {
@@ -284,14 +287,15 @@ public class EntityMatcherTest
         final PreparedQuery<Integer> stringQuery = builder.select(distinct(to.getBar())).build(Integer.class);
         assertThat(stringQuery.getMatching(em).size(), is(2));
     }
-    
+
     @Test
     public void testMaxDistinct()
     {
         final TestOther to = EntityMatcher.matcher(TestOther.class);
         final Builder<TestOther> builder = EntityMatcher.builder(to);
 
-        final PreparedQuery<Integer> stringQuery = builder.select(max(distinct(to.getFoo()))).nativeQuery(true).build(Integer.class);
+        final PreparedQuery<Integer> stringQuery = builder.select(max(distinct(to.getFoo()))).nativeQuery(true)
+                .build(Integer.class);
         assertThat(stringQuery.getSingleMatching(em), is(6));
     }
 
@@ -310,7 +314,7 @@ public class EntityMatcherTest
 
         System.out.println(composer.toString());
     }
-    
+
     @Test
     public void orderBy()
     {
@@ -324,5 +328,18 @@ public class EntityMatcherTest
             next = Math.max(each.getFoo(), next);
             assertThat(each.getFoo(), is(next));
         }
+    }
+
+    @Test
+    public void havingCount()
+    {
+        final TestOther to = EntityMatcher.matcher(TestOther.class);
+        final Builder<TestOther> builder = EntityMatcher.builder(to);
+
+        final PreparedQuery<BigInteger> stringQuery = builder.select(count(to.getFoo())).groupBy(to.getBar())
+                .having(count(to.getFoo()), gt(2)).nativeQuery(true).build(BigInteger.class);
+        
+        final BigInteger res = stringQuery.getSingleMatching(em);
+        assertThat(res.intValue(), is(1));
     }
 }

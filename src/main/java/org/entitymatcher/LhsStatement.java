@@ -36,7 +36,7 @@ import com.google.common.collect.Lists;
  * {@link #or(LhsStatement)} methods.
  * <p>
  * The table alias, as well as the column are passed to the
- * {@link #toJpql(String, String, String, String)} via lhs args.
+ * {@link #toStatement(String, String, String, String)} via lhs args.
  */
 public class LhsStatement<T> extends LhsRhsStatement<T>
 {
@@ -75,18 +75,18 @@ public class LhsStatement<T> extends LhsRhsStatement<T>
     }
 
     @Override
-    public List<Part> toJpql(String lhsTable, String lhsColumn, String rhsTable, String rhsColumn, ParameterBinding params)
+    public List<Part> toStatement(String lhsExpr, String rhsExpr, ParameterBinding params)
     {
         final List<Part> l = new ArrayList<Part>();
         for (Statement st : statements)
         {
-            l.addAll(st.toJpql(lhsTable, lhsColumn, rhsTable, rhsColumn, params));
+            l.addAll(st.toStatement(lhsExpr, rhsExpr, params));
         }
         return l;
     }
 
     public static final LhsStatement<?> or = new LhsStatement<Object>(
-            (lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Lists.newArrayList(Statement.create(" OR ")));
+            (lhsExpr, rhsExpr, params) -> Lists.newArrayList(Statement.create(" OR ")));
     public static final LhsStatement<?> and = new LhsStatement<Object>(
-            (lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Lists.newArrayList(Statement.create(" AND ")));
+            (lhsExpr, rhsExpr, params) -> Lists.newArrayList(Statement.create(" AND ")));
 }

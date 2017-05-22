@@ -32,7 +32,7 @@ import javax.persistence.Query;
 /**
  * This class binds jpql parameters for a single query and stores the parameters for later solving.
  */
-class JpqlBinding implements ParameterBinding
+class ParameterBindingImpl implements ParameterBinding
 {
     private int suffix;
     final List<Object> l = new ArrayList<Object>();

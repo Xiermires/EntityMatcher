@@ -29,25 +29,26 @@ import java.util.List;
  * It takes the form : LEFT_HAND_SIDE_TABLE_AND_COLUMN OPERATOR RIGHT_HAND_SIDE_TABLE_AND_COLUMN
  * <p>
  * The table alias, as well as the column are passed to the
- * {@link #toJpql(String, String, String, String)} via lhs / rhs args.
+ * {@link #toStatement(String, String, String, String)} via lhs / rhs args.
  */
 public class LhsRhsStatement<T> implements Statement
 {
     private final Statement statement;
 
-    // Identifies INNER / OUTER / FETCH joins which must be placed in the FROM clause (see JPA 2.0 specification). 
-    private final boolean joinRelationship; 
-    
+    // Identifies INNER / OUTER / FETCH joins which must be placed in the FROM clause (see JPA 2.0
+    // specification).
+    private final boolean joinRelationship;
+
     public LhsRhsStatement(Statement statement, boolean relationship)
     {
         this.statement = statement;
         this.joinRelationship = relationship;
     }
-    
+
     @Override
-    public List<Part> toJpql(String lhsTable, String lhsColumn, String rhsTable, String rhsColumn, ParameterBinding params)
+    public List<Part> toStatement(String lhsExpr, String rhsExpr, ParameterBinding params)
     {
-        return statement.toJpql(lhsTable, lhsColumn, rhsTable, rhsColumn, params);
+        return statement.toStatement(lhsExpr, rhsExpr, params);
     }
 
     protected boolean isJoinRelationship()

@@ -27,7 +27,7 @@ import com.google.common.collect.Lists;
 
 public interface Statement
 {
-    List<Part> toJpql(String lhsTableAlias, String lhsColumn, String rhsTableAlias, String rhsColumn, ParameterBinding params);
+    List<Part> toStatement(String lhsExpr, String rhsExpr, ParameterBinding params);
 
     public static List<Part> create(String expr)
     {
@@ -65,7 +65,7 @@ public interface Statement
             this.rhs = rhs;
         }
     }
-    
+
     /**
      * Negates an expression.
      * <p>

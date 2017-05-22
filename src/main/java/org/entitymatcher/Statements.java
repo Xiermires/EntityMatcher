@@ -71,48 +71,48 @@ public class Statements
     
     public static <T> LhsStatement<T> like(T t)
     {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Statement.create(
-                tableColumn(lhsTable, lhsColumn),
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(
+                lhsExpr,
                 Connector.LIKE, valueOf(t)));
     }
 
     public static <T> LhsStatement<T> eq(T t)
     {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Statement.create(
-                tableColumn(lhsTable, lhsColumn),
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(
+                lhsExpr,
                 Connector.EQ, valueOf(t)));
     }
 
     public static <T> LhsStatement<T> gt(T t)
     {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Statement.create(
-                tableColumn(lhsTable, lhsColumn), Connector.GT, valueOf(t)));
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(
+                lhsExpr, Connector.GT, valueOf(t)));
     }
 
     public static <T> LhsStatement<T> lt(T t)
     {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Statement.create(
-                tableColumn(lhsTable, lhsColumn), Connector.LT,
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(
+                lhsExpr, Connector.LT,
                 valueOf(t)));
     }
 
     public static <T> LhsStatement<T> in(Collection<T> ts)
     {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Statement.create(
-                tableColumn(lhsTable, lhsColumn), Connector.IN, params.bind(ts)));
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(
+                lhsExpr, Connector.IN, params.bind(ts)));
     }
 
     public static <T> LhsRhsStatement<T> join(T getter)
     {
-        return new LhsRhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> Statement.create(
-                tableColumn(lhsTable, lhsColumn), Connector.EQ, tableColumn(rhsTable, rhsColumn)), false);
+        return new LhsRhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(
+                lhsExpr, Connector.EQ, rhsExpr), false);
     }
 
     public static <T> LhsStatement<T> not(LhsStatement<T> st)
     {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) ->
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) ->
         {
-            final List<Part> parts = st.toJpql(lhsTable, lhsColumn, rhsTable, rhsColumn, params);
+            final List<Part> parts = st.toStatement(lhsExpr, rhsExpr, params);
             for (Part part : parts)
                 part.conn.negate();
             return parts;
@@ -123,52 +123,52 @@ public class Statements
     
     public static <T> LhsStatement<T> max(T t)
     {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> {
-            return Statement.create(" MAX(" + tableColumn(lhsTable, lhsColumn) + ")", Statement.dontNegate, "");
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> {
+            return Statement.create(" MAX(" + lhsExpr + ")", Statement.dontNegate, "");
         });
     }
     
     public static <T> LhsStatement<T> max(LhsStatement<T> st)
     {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> {
-            final String expr = Statement.toString(st.toJpql(lhsTable, lhsColumn, rhsTable, rhsColumn, params));
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> {
+            final String expr = Statement.toString(st.toStatement(lhsExpr, rhsExpr, params));
             return Statement.create(" MAX(" + expr + ")", Statement.dontNegate, "");
         });
     }
     
     public static <T> LhsStatement<T> distinct(T t)
     {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> {
-            return Statement.create(" DISTINCT(" + tableColumn(lhsTable, lhsColumn) + ")", Statement.dontNegate, "");
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> {
+            return Statement.create(" DISTINCT(" + lhsExpr + ")", Statement.dontNegate, "");
         });
     }
     
     public static <T> LhsStatement<T> count(T t)
     {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> {
-            return Statement.create(" COUNT(" + tableColumn(lhsTable, lhsColumn) + ")", Statement.dontNegate, "");
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> {
+            return Statement.create(" COUNT(" + lhsExpr + ")", Statement.dontNegate, "");
         });
     }
     
     public static <T> LhsStatement<T> count(LhsStatement<T> st)
     {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> {
-            final String expr = Statement.toString(st.toJpql(lhsTable, lhsColumn, rhsTable, rhsColumn, params));
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> {
+            final String expr = Statement.toString(st.toStatement(lhsExpr, rhsExpr, params));
             return Statement.create(" COUNT(" + expr + ")", Statement.dontNegate, "");
         });
     }
     
     public static <T> LhsStatement<T> min(T t)
     {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> {
-            return Statement.create(" MIN(" + tableColumn(lhsTable, lhsColumn) + ")", Statement.dontNegate, "");
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> {
+            return Statement.create(" MIN(" + lhsExpr + ")", Statement.dontNegate, "");
         });
     }
     
     public static <T> LhsStatement<T> avg(T t)
     {
-        return new LhsStatement<T>((lhsTable, lhsColumn, rhsTable, rhsColumn, params) -> {
-            return Statement.create(" AVG(" + tableColumn(lhsTable, lhsColumn) + ")", Statement.dontNegate, "");
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> {
+            return Statement.create(" AVG(" + lhsExpr + ")", Statement.dontNegate, "");
         });
     }
     

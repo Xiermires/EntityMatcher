@@ -22,6 +22,7 @@
 package org.entitymatcher;
 
 import static org.entitymatcher.Builder.Mode.GROUPBY;
+import static org.entitymatcher.Builder.Mode.HAVING;
 import static org.entitymatcher.Builder.Mode.ORDERBY;
 import static org.entitymatcher.Builder.Mode.SELECT;
 import static org.entitymatcher.Builder.Mode.STATEMENTS;
@@ -29,6 +30,7 @@ import static org.entitymatcher.Builder.Order.ASC;
 import static org.entitymatcher.EntityMatcher.camelDown;
 import static org.entitymatcher.EntityMatcher.camelUp;
 import static org.entitymatcher.EntityMatcher.isGetter;
+import static org.entitymatcher.EntityMatcher.tableColumn;
 import static org.entitymatcher.EntityMatcher.toAlias;
 
 import java.lang.reflect.Field;
@@ -69,7 +71,7 @@ public class Builder<T> extends InvokationCapturer
 
     private final Class<T> defaultRetType;
     private boolean nativeQuery = false;
-    private final ParameterBinding params = new JpqlBinding();
+    private final ParameterBinding params = new ParameterBindingImpl();
     private final Set<String> tableNames = new LinkedHashSet<>();
     private final ListMultimap<Mode, CapturedStatement> map = MultimapBuilder.linkedHashKeys().arrayListValues().build();
     private Order order = null;
@@ -89,9 +91,9 @@ public class Builder<T> extends InvokationCapturer
      * Where bar and foo are the desired constants and clazz is a java bean with bar and foo
      * properties.
      */
-    public Builder<T> select(Object... os)
+    public Builder<T> select(Object o, Object... os)
     {
-        return processLhsStatements(SELECT, os);
+        return processLhsStatements(SELECT, o, os);
     }
 
     public Builder<T> orderBy(Object... os)
@@ -99,15 +101,15 @@ public class Builder<T> extends InvokationCapturer
         return orderBy(ASC, os);
     }
 
-    public Builder<T> orderBy(Order order, Object... os)
+    public Builder<T> orderBy(Order order, Object o, Object... os)
     {
         this.order = order;
-        return processLhsStatements(ORDERBY, os);
+        return processLhsStatements(ORDERBY, o, os);
     }
 
-    public Builder<T> groupBy(Object... os)
+    public Builder<T> groupBy(Object o, Object... os)
     {
-        return processLhsStatements(GROUPBY, os);
+        return processLhsStatements(GROUPBY, o, os);
     }
 
     public Builder<T> nativeQuery(boolean b)
@@ -121,21 +123,6 @@ public class Builder<T> extends InvokationCapturer
         return map.get(mode);
     }
 
-    Builder<T> processLhsStatements(Mode mode, Object... os)
-    {
-        final List<CapturedStatement> capturedStatements = mode(mode);
-        capturedStatements.clear(); 
-        Arrays.asList(os).forEach(o -> capturedStatements.add(captureLhsStatement(o)));
-        return this;
-    }
-
-    CapturedStatement captureLhsStatement(Object o)
-    {
-        if (o instanceof LhsRhsStatement) return new CapturedStatement(extractTableColumn(getLastCapture()), null,
-                (LhsRhsStatement<?>) o);
-        else return new CapturedStatement(extractTableColumn(getLastCapture()), null, null);
-    }
-
     public <E> LhsRhsStatementBuilder match(E getter, LhsRhsStatement<? extends E> statement)
     {
         return match(statement);
@@ -145,8 +132,45 @@ public class Builder<T> extends InvokationCapturer
     {
         final TableColumn lhs = extractTableColumn(getLastCapture());
         final TableColumn rhs = extractTableColumn(getLastCapture());
+        mode(STATEMENTS).add(new CapturedStatement(lhs, rhs, statement));
+        return new LhsRhsStatementBuilder();
+    }
 
-        return new LhsRhsStatementBuilder(new CapturedStatement(lhs, rhs, statement));
+    public <E> AggregateStatementBuilder having(LhsStatement<E> aggregate, LhsStatement<E> statement)
+    {
+        final TableColumn lhs = extractTableColumn(getLastCapture());
+        final String lhsTableName = getTableName(lhs);
+        final String lhsColumnName = getColumnName(lhs);
+        final String _lhsExpr = Statement.toString(aggregate.toStatement(tableColumn(toAlias(lhsTableName), lhsColumnName), null,
+                params));
+
+        final TableColumn rhs = extractTableColumn(getLastCapture());
+        final String _rhsExpr = rhs == nullValue ? null : tableColumn(getTableName(rhs), getColumnName(rhs));
+
+        final LhsStatement<T> newStatement = new LhsStatement<T>((lhsExpr, rhsExpr, params) ->
+        {
+            return Statement.create(Statement.toString(statement.toStatement(_lhsExpr, _rhsExpr, params)), Statement.dontNegate,
+                    "");
+        });
+
+        mode(HAVING).add(new CapturedStatement(lhs, rhs, newStatement));
+        return new AggregateStatementBuilder();
+    }
+
+    Builder<T> processLhsStatements(Mode mode, Object o, Object... os)
+    {
+        final List<CapturedStatement> capturedStatements = mode(mode);
+        capturedStatements.clear();
+        capturedStatements.add(captureLhsStatement(o));
+        Arrays.asList(os).forEach(o_ -> capturedStatements.add(captureLhsStatement(o_)));
+        return this;
+    }
+
+    CapturedStatement captureLhsStatement(Object o)
+    {
+        if (o instanceof LhsRhsStatement) return new CapturedStatement(extractTableColumn(getLastCapture()), null,
+                (LhsRhsStatement<?>) o);
+        else return new CapturedStatement(extractTableColumn(getLastCapture()), null, null);
     }
 
     private final TableColumn nullValue = new TableColumn(null, null);
@@ -352,14 +376,17 @@ public class Builder<T> extends InvokationCapturer
         final StringBuilder whereClause = new StringBuilder();
         processStatements(whereClause, fromClause, unaliasedTables);
 
-        final StringBuilder groupBy = new StringBuilder();
-        processGroupBy(groupBy);
+        final StringBuilder groupByClause = new StringBuilder();
+        processGroupBy(groupByClause);
 
-        final StringBuilder orderBy = new StringBuilder();
-        processOrderBy(orderBy);
+        final StringBuilder havingClause = new StringBuilder();
+        processHaving(havingClause);
 
-        return new StringBuilder(selectClause).append(removeLastComma(fromClause)).append(whereClause).append(groupBy)
-                .append(orderBy)
+        final StringBuilder orderByClause = new StringBuilder();
+        processOrderBy(orderByClause);
+
+        return new StringBuilder(selectClause).append(removeLastComma(fromClause)).append(whereClause).append(groupByClause)
+                .append(havingClause).append(orderByClause)
                 .toString();
     }
 
@@ -382,7 +409,7 @@ public class Builder<T> extends InvokationCapturer
         fromClause.append(tableName).append(" ").append(toAlias(tableName)).append(", ");
     }
 
-    private String appendUnpackedSelect(StringBuilder selectClause, StringBuilder fromClause, Set<String> unaliasedTables)
+    private void appendUnpackedSelect(StringBuilder selectClause, StringBuilder fromClause, Set<String> unaliasedTables)
     {
         for (Iterator<CapturedStatement> it = mode(SELECT).iterator(); it.hasNext();)
         {
@@ -397,13 +424,13 @@ public class Builder<T> extends InvokationCapturer
                 unaliasedTables.remove(tableName);
             }
 
-            if (next.statement != null) selectClause.append(Statement.toString(next.statement.toJpql(tableAlias, columnName,
-                    null, null, params)));
+            if (next.statement != null) selectClause.append(Statement.toString(next.statement.toStatement(
+                    tableColumn(tableAlias, columnName),
+                    null, params)));
             else selectClause.append(tableAlias).append(".").append(columnName);
 
             selectClause.append(it.hasNext() ? ", " : "");
         }
-        return selectClause.toString();
     }
 
     private void processStatements(StringBuilder whereClause, StringBuilder fromClause, Set<String> unaliasedTables)
@@ -418,9 +445,10 @@ public class Builder<T> extends InvokationCapturer
                 if (lhsRhs.isJoinRelationship())
                 {
                     final String lhsTableName = getTableName(captured.lhs);
-                    final List<Part> jpql = lhsRhs.toJpql(toAlias(lhsTableName), getColumnName(captured.lhs),
-                            toAlias(getTableName(captured.rhs)), getColumnName(captured.rhs), params);
-                    fromClause.append(Statement.toString(jpql)).append(", ");
+                    final List<Part> statement = lhsRhs.toStatement(
+                            tableColumn(toAlias(lhsTableName), getColumnName(captured.lhs)),
+                            tableColumn(toAlias(getTableName(captured.rhs)), getColumnName(captured.rhs)), params);
+                    fromClause.append(Statement.toString(statement)).append(", ");
                     // lhsTableName has been assigned an alias in the FROM clause
                     unaliasedTables.remove(lhsTableName);
                 }
@@ -442,9 +470,9 @@ public class Builder<T> extends InvokationCapturer
                     }
 
                     // Add WHERE conditions
-                    final List<Part> jpql = lhsRhs.toJpql(toAlias(lhsTableName), getColumnName(captured.lhs),
-                            toAlias(rhsTableName), getColumnName(captured.rhs), params);
-                    whereClause.append(Statement.toString(jpql));
+                    final List<Part> parts = lhsRhs.toStatement(tableColumn(toAlias(lhsTableName), getColumnName(captured.lhs)),
+                            tableColumn(toAlias(rhsTableName), getColumnName(captured.rhs)), params);
+                    whereClause.append(Statement.toString(parts));
                 }
             }
         }
@@ -458,6 +486,26 @@ public class Builder<T> extends InvokationCapturer
             orderBy.append(" ORDER BY ");
             appendLhsStatements(orderBy, captures.iterator());
             orderBy.append(" ").append(order.name());
+        }
+    }
+
+    private void processHaving(StringBuilder havingClause)
+    {
+        final List<CapturedStatement> statements = mode(HAVING);
+        if (!statements.isEmpty())
+        {
+            havingClause.append(" HAVING ");
+            for (CapturedStatement captured : statements)
+            {
+                final LhsRhsStatement<?> lhsRhs = captured.statement;
+                final String lhsTableName = getTableName(captured.lhs);
+                final String rhsTableName = getTableName(captured.rhs);
+
+                // Add HAVING conditions
+                final List<Part> parts = lhsRhs.toStatement(tableColumn(toAlias(lhsTableName), getColumnName(captured.lhs)),
+                        tableColumn(toAlias(rhsTableName), getColumnName(captured.rhs)), params);
+                havingClause.append(Statement.toString(parts));
+            }
         }
     }
 
@@ -542,13 +590,21 @@ public class Builder<T> extends InvokationCapturer
         }
     }
 
-    class LhsRhsStatementBuilder
+    abstract class StatementBuilder
     {
-        LhsRhsStatementBuilder(CapturedStatement statement)
+        public PreparedQuery<T> build()
         {
-            map.put(Mode.STATEMENTS, statement);
+            return Builder.this.build();
         }
 
+        public <E> PreparedQuery<E> build(Class<E> clazz)
+        {
+            return Builder.this.build(clazz);
+        }
+    }
+
+    class LhsRhsStatementBuilder extends StatementBuilder
+    {
         public LhsRhsStatementBuilder nativeQuery(boolean b)
         {
             nativeQuery = b;
@@ -594,15 +650,44 @@ public class Builder<T> extends InvokationCapturer
             statements.add(new CapturedStatement(lhs, rhs, statement));
             return this;
         }
+    }
 
-        public PreparedQuery<T> build()
+    class AggregateStatementBuilder extends StatementBuilder
+    {
+        public AggregateStatementBuilder nativeQuery(boolean b)
         {
-            return Builder.this.build();
+            nativeQuery = b;
+            return this;
         }
 
-        public <E> PreparedQuery<E> build(Class<E> clazz)
+        public <E> AggregateStatementBuilder and(LhsStatement<E> aggregate, LhsRhsStatement<E> statement)
         {
-            return Builder.this.build(clazz);
+            final TableColumn lhs = extractTableColumn(getLastCapture());
+            final TableColumn rhs = extractTableColumn(getLastCapture());
+
+            if (lhs == null && rhs == null)
+                throw new IllegalArgumentException(
+                        "Nothing captured. Likely an invalid statement (example: [valid -> 'having(aggreagate(instance.getSmth()), lt(-5).and(aggregate(instance.getSmth(), gt(5))'];");
+
+            final List<CapturedStatement> statements = mode(HAVING);
+            statements.add(new CapturedStatement(null, null, LhsStatement.and));
+            statements.add(new CapturedStatement(lhs, rhs, statement));
+            return this;
+        }
+
+        public <E> AggregateStatementBuilder or(LhsStatement<E> aggregate, LhsRhsStatement<E> statement)
+        {
+            final TableColumn lhs = extractTableColumn(getLastCapture());
+            final TableColumn rhs = extractTableColumn(getLastCapture());
+
+            if (lhs == null && rhs == null)
+                throw new IllegalArgumentException(
+                        "Nothing captured. Likely an invalid statement (example: [valid -> 'having(aggreagate(instance.getSmth()), lt(-5).or(aggregate(instance.getSmth(), gt(5))'];");
+
+            final List<CapturedStatement> statements = mode(HAVING);
+            statements.add(new CapturedStatement(null, null, LhsStatement.or));
+            statements.add(new CapturedStatement(lhs, rhs, statement));
+            return this;
         }
     }
 }
