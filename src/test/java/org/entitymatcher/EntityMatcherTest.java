@@ -336,10 +336,10 @@ public class EntityMatcherTest
         final TestOther to = EntityMatcher.matcher(TestOther.class);
         final Builder<TestOther> builder = EntityMatcher.builder(to);
 
-        final PreparedQuery<BigInteger> stringQuery = builder.select(count(to.getFoo())).groupBy(to.getBar())
-                .having(count(to.getFoo()), gt(2)).nativeQuery(true).build(BigInteger.class);
+        final PreparedQuery<Integer> stringQuery = builder.select(count(to.getFoo())).groupBy(to.getBar())
+                .having(count(to.getFoo()), gt(2)).nativeQuery(true).build(Integer.class);
         
-        final BigInteger res = stringQuery.getSingleMatching(em);
+        final Integer res = stringQuery.getSingleMatching(em);
         assertThat(res.intValue(), is(1));
     }
 }

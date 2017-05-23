@@ -32,10 +32,8 @@ import org.entitymatcher.Statement.Part;
  */
 public class Statements
 {
-    enum Connector implements Negatable
+    static class Connector implements Negatable
     {
-        LIKE(" LIKE ", " NOT LIKE "), EQ(" = ", " != "), GT(" > ", " < "), LT(" < ", " > "), IN(" IN ", " NOT IN ");
-
         final String affirmed;
         final String negated;
 
@@ -62,6 +60,13 @@ public class Statements
             return conn;
         }
     }
+    
+    public static final Connector LIKE = new Connector(" LIKE ", " NOT LIKE ");
+    public static final Connector EQ = new Connector(" = ", " != ");
+    public static final Connector GT = new Connector(" > ", " < ");
+    public static final Connector LT = new Connector(" < ", " > ");
+    public static final Connector IN = new Connector(" IN ", " NOT IN ");
+
 
     private Statements()
     {
@@ -73,39 +78,39 @@ public class Statements
     {
         return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(
                 lhsExpr,
-                Connector.LIKE, valueOf(t)));
+                LIKE, valueOf(t)));
     }
 
     public static <T> LhsStatement<T> eq(T t)
     {
         return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(
                 lhsExpr,
-                Connector.EQ, valueOf(t)));
+                EQ, valueOf(t)));
     }
 
     public static <T> LhsStatement<T> gt(T t)
     {
         return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(
-                lhsExpr, Connector.GT, valueOf(t)));
+                lhsExpr, GT, valueOf(t)));
     }
 
     public static <T> LhsStatement<T> lt(T t)
     {
         return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(
-                lhsExpr, Connector.LT,
+                lhsExpr, LT,
                 valueOf(t)));
     }
 
     public static <T> LhsStatement<T> in(Collection<T> ts)
     {
         return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(
-                lhsExpr, Connector.IN, params.bind(ts)));
+                lhsExpr, IN, params.bind(ts)));
     }
 
     public static <T> LhsRhsStatement<T> join(T getter)
     {
         return new LhsRhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(
-                lhsExpr, Connector.EQ, rhsExpr), false);
+                lhsExpr, EQ, rhsExpr), false);
     }
 
     public static <T> LhsStatement<T> not(LhsStatement<T> st)

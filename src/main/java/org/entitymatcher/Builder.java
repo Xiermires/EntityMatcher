@@ -130,21 +130,21 @@ public class Builder<T> extends InvokationCapturer
 
     public <E> LhsRhsStatementBuilder match(LhsRhsStatement<E> statement)
     {
-        final TableColumn lhs = extractTableColumn(getLastCapture());
-        final TableColumn rhs = extractTableColumn(getLastCapture());
+        final ClassField lhs = extractTableColumn(getLastCapture());
+        final ClassField rhs = extractTableColumn(getLastCapture());
         mode(STATEMENTS).add(new CapturedStatement(lhs, rhs, statement));
         return new LhsRhsStatementBuilder();
     }
 
     public <E> AggregateStatementBuilder having(LhsStatement<E> aggregate, LhsStatement<E> statement)
     {
-        final TableColumn lhs = extractTableColumn(getLastCapture());
+        final ClassField lhs = extractTableColumn(getLastCapture());
         final String lhsTableName = getTableName(lhs);
         final String lhsColumnName = getColumnName(lhs);
         final String _lhsExpr = Statement.toString(aggregate.toStatement(tableColumn(toAlias(lhsTableName), lhsColumnName), null,
                 params));
 
-        final TableColumn rhs = extractTableColumn(getLastCapture());
+        final ClassField rhs = extractTableColumn(getLastCapture());
         final String _rhsExpr = rhs == nullValue ? null : tableColumn(getTableName(rhs), getColumnName(rhs));
 
         final LhsStatement<T> newStatement = new LhsStatement<T>((lhsExpr, rhsExpr, params) ->
@@ -168,22 +168,23 @@ public class Builder<T> extends InvokationCapturer
 
     CapturedStatement captureLhsStatement(Object o)
     {
-        if (o instanceof LhsRhsStatement) return new CapturedStatement(extractTableColumn(getLastCapture()), null,
-                (LhsRhsStatement<?>) o);
+        if (o instanceof LhsRhsStatement)
+            return new CapturedStatement(extractTableColumn(getLastCapture()), null, (LhsRhsStatement<?>) o);
         else return new CapturedStatement(extractTableColumn(getLastCapture()), null, null);
     }
 
-    private final TableColumn nullValue = new TableColumn(null, null);
+    private final ClassField nullValue = new ClassField(null, null);
 
-    private TableColumn extractTableColumn(Capture capture)
+    private ClassField extractTableColumn(Capture capture)
     {
-        if (capture == null) return nullValue;
-        else return new TableColumn(getTable(capture), getColumn(capture));
+        if (capture == null)
+            return nullValue;
+        else return new ClassField(getTable(capture), getColumn(capture));
     }
 
-    private String getTableName(TableColumn tc)
+    private String getTableName(ClassField tc)
     {
-        return tc != null && tc.table != null ? getTableName(tc.table) : null;
+        return tc != null && tc.clazz != null ? getTableName(tc.clazz) : null;
     }
 
     private Class<?> getTable(Capture c)
@@ -202,14 +203,14 @@ public class Builder<T> extends InvokationCapturer
         else return clazz.getSimpleName();
     }
 
-    private String getColumnName(TableColumn tc)
+    private String getColumnName(ClassField tc)
     {
-        return tc != null && tc.column != null ? getColumnName(tc.column) : null;
+        return tc != null && tc.field != null ? getColumnName(tc.field) : null;
     }
 
-    private Class<?> getColumnType(TableColumn tc)
+    private Class<?> getColumnType(ClassField tc)
     {
-        return tc != null && tc.column != null ? tc.column.getType() : null;
+        return tc != null && tc.field != null ? tc.field.getType() : null;
     }
 
     private Field getColumn(Capture c)
@@ -265,7 +266,8 @@ public class Builder<T> extends InvokationCapturer
     {
         if (mode(SELECT).isEmpty())
         {
-            if (nativeQuery) selectFields(clazz);
+            if (nativeQuery)
+                selectFields(clazz);
             else return createPackedSelectQuery(clazz);
         }
         return createUnpackedSelectQuery(clazz);
@@ -279,7 +281,7 @@ public class Builder<T> extends InvokationCapturer
             if (isTransient(f))
                 continue;
 
-            select.add(new CapturedStatement(new TableColumn(clazz, f), null, null));
+            select.add(new CapturedStatement(new ClassField(clazz, f), null, null));
         }
     }
 
@@ -287,8 +289,8 @@ public class Builder<T> extends InvokationCapturer
     private boolean isTransient(Field f)
     {
         final int mod = f.getModifiers();
-        return f.isAnnotationPresent(Transient.class) || Modifier.isFinal(mod)
-                || Modifier.isStatic(mod) || Modifier.isTransient(mod);
+        return f.isAnnotationPresent(Transient.class) || Modifier.isFinal(mod) || Modifier.isStatic(mod)
+                || Modifier.isTransient(mod);
     }
 
     private <E> PreparedQueryImpl<E> createPackedSelectQuery(Class<E> clazz)
@@ -323,8 +325,12 @@ public class Builder<T> extends InvokationCapturer
                     // If the value is null or its type is assignable to clazz, just cast it.
                     if (os.length == 1)
                     {
-                        if (os[0] == null) return null;
-                        else if (clazz.isAssignableFrom(os[0].getClass())) return (E) os[0]; // safe
+                        if (os[0] == null)
+                            return null;
+                        else if (clazz.isAssignableFrom(os[0].getClass()))
+                            return (E) os[0]; // safe
+                        else if (Number.class.isAssignableFrom(clazz) && os[0] instanceof Number)
+                            return (E) NumberConversion.convert(os[0], NumberConversion.getRank(clazz));
                     }
 
                     // If multiple values or single not assignable, assign the received values in
@@ -333,7 +339,13 @@ public class Builder<T> extends InvokationCapturer
                     for (int i = 0; i < os.length; i++)
                     {
                         final CapturedStatement c = mode(SELECT).get(i);
-                        clazz.getMethod("set".concat(camelUp(getColumnName(c.lhs))), getColumnType(c.lhs)).invoke(e, os[i]);
+                        final Class<?> columnType = getColumnType(c.lhs);
+                        if (columnType.isAssignableFrom(os[i].getClass()))
+                            clazz.getMethod("set".concat(camelUp(getColumnName(c.lhs))), columnType).invoke(e, os[i]);
+                        else if (Number.class.isAssignableFrom(columnType) && os[0] instanceof Number)
+                            clazz.getMethod("set".concat(camelUp(getColumnName(c.lhs))), columnType).invoke(e,
+                                    NumberConversion.convert(os[i], NumberConversion.getRank(clazz)));
+
                     }
                     return e;
                 }
@@ -341,7 +353,7 @@ public class Builder<T> extends InvokationCapturer
                         | IllegalArgumentException | InvocationTargetException e)
                 {
                     throw new IllegalArgumentException(
-                            "The class provided does not contain the requested named fields, is not a java bean or hasn't a default public ctor");
+                            "The class provided does not contain the requested named fields, is not a java bean, hasn't a default public ctor or is of an invalid type");
                 }
             };
 
@@ -351,7 +363,8 @@ public class Builder<T> extends InvokationCapturer
                 final Object singleResult = createQuery(em, nativeQuery).getSingleResult();
                 if (singleResult != null)
                 {
-                    if (singleResult.getClass().isArray()) return copyProperties.apply((Object[]) singleResult);
+                    if (singleResult.getClass().isArray())
+                        return copyProperties.apply((Object[]) singleResult);
                     else return copyProperties.apply(new Object[] { singleResult });
                 }
                 return null;
@@ -385,16 +398,18 @@ public class Builder<T> extends InvokationCapturer
         final StringBuilder orderByClause = new StringBuilder();
         processOrderBy(orderByClause);
 
-        return new StringBuilder(selectClause).append(removeLastComma(fromClause)).append(whereClause).append(groupByClause)
-                .append(havingClause).append(orderByClause)
-                .toString();
+        final String query = new StringBuilder(selectClause).append(removeLastComma(fromClause)).append(whereClause).append(
+                groupByClause).append(havingClause).append(orderByClause).toString();
+
+        return query.trim().replaceAll(" +", " ");
     }
 
     private void processSelect(StringBuilder selectClause, StringBuilder fromClause, Set<String> unaliasedTables)
     {
         if (mode(SELECT).isEmpty())
         {
-            if (nativeQuery) appendUnpackedSelect(selectClause, fromClause, unaliasedTables);
+            if (nativeQuery)
+                appendUnpackedSelect(selectClause, fromClause, unaliasedTables);
             else appendPackedSelect(selectClause, fromClause, unaliasedTables);
         }
         else appendUnpackedSelect(selectClause, fromClause, unaliasedTables);
@@ -424,9 +439,9 @@ public class Builder<T> extends InvokationCapturer
                 unaliasedTables.remove(tableName);
             }
 
-            if (next.statement != null) selectClause.append(Statement.toString(next.statement.toStatement(
-                    tableColumn(tableAlias, columnName),
-                    null, params)));
+            if (next.statement != null)
+                selectClause.append(Statement.toString(next.statement.toStatement(tableColumn(tableAlias, columnName), null,
+                        params)));
             else selectClause.append(tableAlias).append(".").append(columnName);
 
             selectClause.append(it.hasNext() ? ", " : "");
@@ -445,9 +460,9 @@ public class Builder<T> extends InvokationCapturer
                 if (lhsRhs.isJoinRelationship())
                 {
                     final String lhsTableName = getTableName(captured.lhs);
-                    final List<Part> statement = lhsRhs.toStatement(
-                            tableColumn(toAlias(lhsTableName), getColumnName(captured.lhs)),
-                            tableColumn(toAlias(getTableName(captured.rhs)), getColumnName(captured.rhs)), params);
+                    final List<Part> statement = lhsRhs.toStatement(tableColumn(toAlias(lhsTableName),
+                            getColumnName(captured.lhs)), tableColumn(toAlias(getTableName(captured.rhs)),
+                            getColumnName(captured.rhs)), params);
                     fromClause.append(Statement.toString(statement)).append(", ");
                     // lhsTableName has been assigned an alias in the FROM clause
                     unaliasedTables.remove(lhsTableName);
@@ -544,25 +559,25 @@ public class Builder<T> extends InvokationCapturer
         List<T> getMatching(EntityManager em);
     }
 
-    static class TableColumn
+    static class ClassField
     {
-        final Class<?> table;
-        final Field column;
+        final Class<?> clazz;
+        final Field field;
 
-        TableColumn(Class<?> table, Field column)
+        ClassField(Class<?> clazz, Field field)
         {
-            this.table = table;
-            this.column = column;
+            this.clazz = clazz;
+            this.field = field;
         }
     }
 
     static class CapturedStatement
     {
-        final TableColumn lhs;
-        final TableColumn rhs;
+        final ClassField lhs;
+        final ClassField rhs;
         final LhsRhsStatement<?> statement;
 
-        public CapturedStatement(TableColumn lhs, TableColumn rhs, LhsRhsStatement<?> statement)
+        public CapturedStatement(ClassField lhs, ClassField rhs, LhsRhsStatement<?> statement)
         {
             if (lhs == null && rhs == null && statement == null)
                 throw new IllegalArgumentException("Nothing captured.");
@@ -618,8 +633,8 @@ public class Builder<T> extends InvokationCapturer
 
         public <E> LhsRhsStatementBuilder and(LhsRhsStatement<E> statement)
         {
-            final TableColumn lhs = extractTableColumn(getLastCapture());
-            final TableColumn rhs = extractTableColumn(getLastCapture());
+            final ClassField lhs = extractTableColumn(getLastCapture());
+            final ClassField rhs = extractTableColumn(getLastCapture());
 
             if (lhs == null && rhs == null)
                 throw new IllegalArgumentException(
@@ -638,8 +653,8 @@ public class Builder<T> extends InvokationCapturer
 
         public <E> LhsRhsStatementBuilder or(LhsRhsStatement<E> statement)
         {
-            final TableColumn lhs = extractTableColumn(getLastCapture());
-            final TableColumn rhs = extractTableColumn(getLastCapture());
+            final ClassField lhs = extractTableColumn(getLastCapture());
+            final ClassField rhs = extractTableColumn(getLastCapture());
 
             if (lhs == null && rhs == null)
                 throw new IllegalArgumentException(
@@ -662,8 +677,8 @@ public class Builder<T> extends InvokationCapturer
 
         public <E> AggregateStatementBuilder and(LhsStatement<E> aggregate, LhsRhsStatement<E> statement)
         {
-            final TableColumn lhs = extractTableColumn(getLastCapture());
-            final TableColumn rhs = extractTableColumn(getLastCapture());
+            final ClassField lhs = extractTableColumn(getLastCapture());
+            final ClassField rhs = extractTableColumn(getLastCapture());
 
             if (lhs == null && rhs == null)
                 throw new IllegalArgumentException(
@@ -677,8 +692,8 @@ public class Builder<T> extends InvokationCapturer
 
         public <E> AggregateStatementBuilder or(LhsStatement<E> aggregate, LhsRhsStatement<E> statement)
         {
-            final TableColumn lhs = extractTableColumn(getLastCapture());
-            final TableColumn rhs = extractTableColumn(getLastCapture());
+            final ClassField lhs = extractTableColumn(getLastCapture());
+            final ClassField rhs = extractTableColumn(getLastCapture());
 
             if (lhs == null && rhs == null)
                 throw new IllegalArgumentException(
