@@ -134,7 +134,7 @@ Coding Statements is relatively straightforward. Both LhsStatement and LhsRhsSta
 
 public interface Statement
 {
-    List<Part> toJpql(String lhsTableAlias, String lhsColumn, String rhsTableAlias, String rhsColumn, ParameterBinding params);
+    List<Part> toStatement(String lhsTableAlias, String lhsColumn, String rhsTableAlias, String rhsColumn, ParameterBinding params);
     
     // syntax sugar to create parts, toString(), etc.
     ...
@@ -166,10 +166,14 @@ Basically due to the NOT nature. Consider how to acomplish the following if we w
 Let's have a look at how the operations look like ?.
 
 ```    
-    enum Connector implements Negatable
+    public static final Connector LIKE = new Connector(" LIKE ", " NOT LIKE ");
+    public static final Connector EQ = new Connector(" = ", " != ");
+    public static final Connector GT = new Connector(" > ", " < ");
+    public static final Connector LT = new Connector(" < ", " > ");
+    public static final Connector IN = new Connector(" IN ", " NOT IN ");
+    
+    static class Connector implements Negatable
     {
-        LIKE(" LIKE ", " NOT LIKE "), EQ(" = ", " != "), GT(" > ", " < "), LT(" < ", " > "), IN(" IN ", " NOT IN ");
-
         final String affirmed;
         final String negated;
 
@@ -187,7 +191,7 @@ Let's have a look at how the operations look like ?.
         public void negate()
         {
             conn = isNegated ? affirmed : negated;
-            isNegated = !isNegated
+            isNegated = !isNegated;
         }
 
         @Override

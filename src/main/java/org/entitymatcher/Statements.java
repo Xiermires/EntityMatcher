@@ -32,6 +32,12 @@ import org.entitymatcher.Statement.Part;
  */
 public class Statements
 {
+    public static final Connector LIKE = new Connector(" LIKE ", " NOT LIKE ");
+    public static final Connector EQ = new Connector(" = ", " != ");
+    public static final Connector GT = new Connector(" > ", " < ");
+    public static final Connector LT = new Connector(" < ", " > ");
+    public static final Connector IN = new Connector(" IN ", " NOT IN ");
+    
     static class Connector implements Negatable
     {
         final String affirmed;
@@ -60,13 +66,6 @@ public class Statements
             return conn;
         }
     }
-    
-    public static final Connector LIKE = new Connector(" LIKE ", " NOT LIKE ");
-    public static final Connector EQ = new Connector(" = ", " != ");
-    public static final Connector GT = new Connector(" > ", " < ");
-    public static final Connector LT = new Connector(" < ", " > ");
-    public static final Connector IN = new Connector(" IN ", " NOT IN ");
-
 
     private Statements()
     {
