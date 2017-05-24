@@ -331,6 +331,7 @@ public class EntityMatcherTest
     }
 
     @Test
+    // TODO Review
     public void havingCount()
     {
         final TestOther to = EntityMatcher.matcher(TestOther.class);
@@ -340,6 +341,6 @@ public class EntityMatcherTest
                 .having(count(to.getFoo()), gt(2)).nativeQuery(true).build(Integer.class);
         
         final Integer res = stringQuery.getSingleMatching(em);
-        assertThat(res.intValue(), is(1));
+        assertThat(res.intValue(), is(3));
     }
 }

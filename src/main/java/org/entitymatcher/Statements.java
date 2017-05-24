@@ -32,12 +32,38 @@ import org.entitymatcher.Statement.Part;
  */
 public class Statements
 {
-    public static final Connector LIKE = new Connector(" LIKE ", " NOT LIKE ");
-    public static final Connector EQ = new Connector(" = ", " != ");
-    public static final Connector GT = new Connector(" > ", " < ");
-    public static final Connector LT = new Connector(" < ", " > ");
-    public static final Connector IN = new Connector(" IN ", " NOT IN ");
-    
+    static final Connector LIKE()
+    {
+        return new Connector(" LIKE ", " NOT LIKE ");
+    }
+
+    static final Connector EQ()
+    {
+        return new Connector(" = ", " != ");
+    }
+
+    static final Connector GT()
+    {
+        return new Connector(" > ", " < ");
+    }
+
+    static final Connector LT()
+    {
+        return new Connector(" < ", " > ");
+    }
+
+    static final Connector IN()
+    {
+        return new Connector(" IN ", " NOT IN ");
+    }
+
+    // TODO Check this
+    static final Connector BETWEEN()
+    {
+        return new Connector(" BETWEEN ", " NOT BETWEEN ");
+    };
+
+    // TODO Simplify
     static class Connector implements Negatable
     {
         final String affirmed;
@@ -71,45 +97,36 @@ public class Statements
     {
     }
 
-    // Conditional statements 
-    
+    // Conditional statements
+
     public static <T> LhsStatement<T> like(T t)
     {
-        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(
-                lhsExpr,
-                LIKE, valueOf(t)));
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(lhsExpr, LIKE(), valueOf(t)));
     }
 
     public static <T> LhsStatement<T> eq(T t)
     {
-        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(
-                lhsExpr,
-                EQ, valueOf(t)));
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(lhsExpr, EQ(), valueOf(t)));
     }
 
     public static <T> LhsStatement<T> gt(T t)
     {
-        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(
-                lhsExpr, GT, valueOf(t)));
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(lhsExpr, GT(), valueOf(t)));
     }
 
     public static <T> LhsStatement<T> lt(T t)
     {
-        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(
-                lhsExpr, LT,
-                valueOf(t)));
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(lhsExpr, LT(), valueOf(t)));
     }
 
     public static <T> LhsStatement<T> in(Collection<T> ts)
     {
-        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(
-                lhsExpr, IN, params.bind(ts)));
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(lhsExpr, IN(), params.bind(ts)));
     }
 
     public static <T> LhsRhsStatement<T> join(T getter)
     {
-        return new LhsRhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(
-                lhsExpr, EQ, rhsExpr), false);
+        return new LhsRhsStatement<T>((lhsExpr, rhsExpr, params) -> Statement.create(lhsExpr, EQ(), rhsExpr), false);
     }
 
     public static <T> LhsStatement<T> not(LhsStatement<T> st)
@@ -122,60 +139,67 @@ public class Statements
             return parts;
         });
     }
-    
+
     // Select / Having functions.
-    
+
     public static <T> LhsStatement<T> max(T t)
     {
-        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> {
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) ->
+        {
             return Statement.create(" MAX(" + lhsExpr + ")", Statement.dontNegate, "");
         });
     }
-    
+
     public static <T> LhsStatement<T> max(LhsStatement<T> st)
     {
-        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> {
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) ->
+        {
             final String expr = Statement.toString(st.toStatement(lhsExpr, rhsExpr, params));
             return Statement.create(" MAX(" + expr + ")", Statement.dontNegate, "");
         });
     }
-    
+
     public static <T> LhsStatement<T> distinct(T t)
     {
-        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> {
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) ->
+        {
             return Statement.create(" DISTINCT(" + lhsExpr + ")", Statement.dontNegate, "");
         });
     }
-    
+
     public static <T> LhsStatement<T> count(T t)
     {
-        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> {
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) ->
+        {
             return Statement.create(" COUNT(" + lhsExpr + ")", Statement.dontNegate, "");
         });
     }
-    
+
     public static <T> LhsStatement<T> count(LhsStatement<T> st)
     {
-        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> {
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) ->
+        {
             final String expr = Statement.toString(st.toStatement(lhsExpr, rhsExpr, params));
             return Statement.create(" COUNT(" + expr + ")", Statement.dontNegate, "");
         });
     }
-    
+
     public static <T> LhsStatement<T> min(T t)
     {
-        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> {
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) ->
+        {
             return Statement.create(" MIN(" + lhsExpr + ")", Statement.dontNegate, "");
         });
     }
-    
+
     public static <T> LhsStatement<T> avg(T t)
     {
-        return new LhsStatement<T>((lhsExpr, rhsExpr, params) -> {
+        return new LhsStatement<T>((lhsExpr, rhsExpr, params) ->
+        {
             return Statement.create(" AVG(" + lhsExpr + ")", Statement.dontNegate, "");
         });
     }
-    
+
     static String tableColumn(String table, String column)
     {
         return table.concat(".").concat(column);
@@ -183,10 +207,7 @@ public class Statements
 
     static <T> String valueOf(T t)
     {
-        if (t instanceof String)
-        {
-            return "'" + t + "'";
-        }
+        if (t instanceof String) { return "'" + t + "'"; }
         return String.valueOf(t);
     }
 }
