@@ -27,11 +27,11 @@ import static org.entitymatcher.Builder.Mode.ORDERBY;
 import static org.entitymatcher.Builder.Mode.SELECT;
 import static org.entitymatcher.Builder.Mode.STATEMENTS;
 import static org.entitymatcher.Builder.Order.ASC;
-import static org.entitymatcher.EntityMatcher.camelDown;
-import static org.entitymatcher.EntityMatcher.camelUp;
-import static org.entitymatcher.EntityMatcher.isGetter;
-import static org.entitymatcher.EntityMatcher.tableColumn;
-import static org.entitymatcher.EntityMatcher.toAlias;
+import static org.entitymatcher.JavaBeanBasedMatcher.camelDown;
+import static org.entitymatcher.JavaBeanBasedMatcher.camelUp;
+import static org.entitymatcher.JavaBeanBasedMatcher.isGetter;
+import static org.entitymatcher.JavaBeanBasedMatcher.tableColumn;
+import static org.entitymatcher.JavaBeanBasedMatcher.toAlias;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -76,11 +76,11 @@ public class Builder<T> extends InvokationCapturer
     private final ListMultimap<Mode, CapturedStatement> map = MultimapBuilder.linkedHashKeys().arrayListValues().build();
     private Order order = null;
 
-    Builder(T main, Object... others)
+    Builder(EntityManager em, T main, Object... others)
     {
-        defaultRetType = observe(main);
+        defaultRetType = null;
         tableNames.add(defaultRetType.getSimpleName());
-        observe(others).forEach(c -> tableNames.add(c.getSimpleName()));
+        //observe(others).forEach(c -> tableNames.add(c.getSimpleName()));
     }
 
     /**
@@ -124,11 +124,6 @@ public class Builder<T> extends InvokationCapturer
     }
 
     public <E> LhsRhsStatementBuilder match(E getter, LhsRhsStatement<? extends E> statement)
-    {
-        return match(statement);
-    }
-
-    public <E> LhsRhsStatementBuilder match(LhsRhsStatement<E> statement)
     {
         final ClassField lhs = extractTableColumn(getLastCapture());
         final ClassField rhs = extractTableColumn(getLastCapture());
@@ -203,6 +198,11 @@ public class Builder<T> extends InvokationCapturer
         else return clazz.getSimpleName();
     }
 
+    private String getColumnName(Capture c)
+    {
+        return getColumnName(getColumn(c));
+    }
+    
     private String getColumnName(ClassField tc)
     {
         return tc != null && tc.field != null ? getColumnName(tc.field) : null;
@@ -272,7 +272,15 @@ public class Builder<T> extends InvokationCapturer
         }
         return createUnpackedSelectQuery(clazz);
     }
+    
+    public T singleMatch() {
+        return null;
+    }
 
+    public T match() {
+        return null;
+    }
+    
     private void selectFields(Class<?> clazz)
     {
         final List<CapturedStatement> select = mode(SELECT);

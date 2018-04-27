@@ -67,4 +67,33 @@ class ParameterBindingImpl implements ParameterBinding
         sb.append(rawQuery.substring(s));
         return sb.toString();
     }
+
+    @Override
+    public String createParam(Object o)
+    {
+        if (o == null)
+            return " IS NULL";
+
+        l.add(o);
+        return "?" + suffix++;
+    }
+
+    @Override
+    public String resolveParams(String rawQuery, Query query)
+    {
+        final Matcher matcher = jpql.matcher(rawQuery);
+        final StringBuffer sb = new StringBuffer();
+        final Iterator<Object> it = l.iterator();
+        int s = 0;
+        while (matcher.find())
+        {
+            assert it.hasNext() : "bad param binding";
+            final String key = matcher.group(1);
+            final Object value = it.next();
+
+            query.setParameter(Integer.valueOf(key), value);
+        }
+        sb.append(rawQuery.substring(s));
+        return sb.toString();
+    }
 }

@@ -21,35 +21,37 @@
  *******************************************************************************/
 package org.entitymatcher;
 
-import static org.entitymatcher.Statements.count;
-import static org.entitymatcher.Statements.distinct;
-import static org.entitymatcher.Statements.eq;
-import static org.entitymatcher.Statements.gt;
-import static org.entitymatcher.Statements.in;
-import static org.entitymatcher.Statements.join;
-import static org.entitymatcher.Statements.like;
-import static org.entitymatcher.Statements.lt;
-import static org.entitymatcher.Statements.max;
-import static org.entitymatcher.Statements.min;
-import static org.entitymatcher.Statements.not;
+import static org.entitymatcher.JavaBeanBasedExpressions.between;
+import static org.entitymatcher.JavaBeanBasedExpressions.eq;
+import static org.entitymatcher.JavaBeanBasedExpressions.gt;
+import static org.entitymatcher.JavaBeanBasedExpressions.in;
+import static org.entitymatcher.JavaBeanBasedExpressions.like;
+import static org.entitymatcher.JavaBeanBasedExpressions.lt;
+import static org.entitymatcher.JavaBeanBasedExpressions.match;
+import static org.entitymatcher.JavaBeanBasedExpressions.not;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.CoreMatchers.startsWith;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThan;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.Assert.assertThat;
 
-import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.List;
 
 import javax.persistence.EntityManager;
 import javax.persistence.Persistence;
 
-import org.entitymatcher.Builder.PreparedQuery;
 import org.h2.jdbcx.JdbcDataSource;
+import org.hamcrest.Matchers;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class EntityMatcherTest
 {
-    static EntityManager em;
+    static EntityMatcher matcher;
 
     @BeforeClass
     public static void pre()
@@ -57,11 +59,12 @@ public class EntityMatcherTest
         final JdbcDataSource ds = new JdbcDataSource();
         ds.setURL("jdbc:h2:~/testDB");
 
-        em = Persistence.createEntityManagerFactory("test").createEntityManager();
+        final EntityManager em = Persistence.createEntityManagerFactory("test").createEntityManager();
 
         try
         {
             em.getTransaction().begin();
+            em.persist(new TestClass(2, null));
             em.persist(new TestClass(5, "Hello"));
             em.persist(new TestClass(3, "Bye"));
             em.persist(new TestClass(6, "Lizard"));
@@ -81,266 +84,412 @@ public class EntityMatcherTest
                 em.getTransaction().rollback();
             }
         }
+
+        matcher = new EntityMatcher(em);
+    }
+
+    @Test
+    public void testEq()
+    {
+        final TestClass tc = JavaBeanBasedMatcher.matcher(TestClass.class);
+        final TestClass testee = matcher.singleMatch(TestClass.class, match(tc.getBar(), eq("Hello")));
+        assertThat(testee, is(Matchers.not(nullValue())));
+        assertThat(testee.bar, is("Hello"));
+    }
+
+    @Test
+    public void testEqNull()
+    {
+        final TestClass tc = JavaBeanBasedMatcher.matcher(TestClass.class);
+        final TestClass testee = matcher.singleMatch(TestClass.class, match(tc.getBar(), eq(null)));
+        assertThat(testee, is(Matchers.not(nullValue())));
+        assertThat(testee.bar, is(nullValue()));
+    }
+
+    @Test
+    public void testEqNotNull()
+    {
+        final TestClass tc = JavaBeanBasedMatcher.matcher(TestClass.class);
+        final List<TestClass> testee = matcher.match(TestClass.class, match(tc.getBar(), not(eq(null)).and(like("%e%"))));
+        assertThat(testee.size(), is(2));
     }
 
     @Test
     public void testLike()
     {
-        final TestClass tc = EntityMatcher.matcher(TestClass.class);
-        final Builder<TestClass> builder = EntityMatcher.builder(tc);
-
-        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), like("Hell%")).build();
-        assertThat(query.getMatching(em).size(), is(1));
+        final TestClass tc = JavaBeanBasedMatcher.matcher(TestClass.class);
+        final TestClass testee = matcher.singleMatch(TestClass.class, match(tc.getBar(), like("Hell%")));
+        assertThat(testee, is(Matchers.not(nullValue())));
+        assertThat(testee.bar, startsWith("Hell"));
     }
 
     @Test
     public void testNotLike()
     {
-        final TestClass tc = EntityMatcher.matcher(TestClass.class);
-        final Builder<TestClass> builder = EntityMatcher.builder(tc);
-
-        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), not(like("Hell%"))).build();
-        assertThat(query.getMatching(em).size(), is(2));
+        final TestClass tc = JavaBeanBasedMatcher.matcher(TestClass.class);
+        final List<TestClass> testee = matcher.match(TestClass.class, match(tc.getBar(), not(like("Hell%"))));
+        assertThat(testee.size(), is(2));
+        for (TestClass t : testee)
+            assertThat(t.bar, Matchers.not(startsWith("Hell")));
     }
 
     @Test
     public void testGreaterThan()
     {
-        final TestClass tc = EntityMatcher.matcher(TestClass.class);
-        final Builder<TestClass> builder = EntityMatcher.builder(tc);
+        final TestClass tc = JavaBeanBasedMatcher.matcher(TestClass.class);
+        final List<TestClass> testee = matcher.match(TestClass.class, match(tc.getFoo(), gt(4)));
 
-        final PreparedQuery<TestClass> query = builder.match(tc.getFoo(), gt(4)).build();
-        assertThat(query.getMatching(em).size(), is(2));
+        assertThat(testee.size(), is(2));
+        for (TestClass t : testee)
+            assertThat(t.foo, is(greaterThan(4)));
     }
 
     @Test
     public void testNotGreaterThan()
     {
-        final TestClass tc = EntityMatcher.matcher(TestClass.class);
-        final Builder<TestClass> builder = EntityMatcher.builder(tc);
+        final TestClass tc = JavaBeanBasedMatcher.matcher(TestClass.class);
+        final List<TestClass> testee = matcher.match(TestClass.class, match(tc.getFoo(), not(gt(4))));
 
-        final PreparedQuery<TestClass> query = builder.match(tc.getFoo(), not(gt(4))).build();
-        assertThat(query.getMatching(em).size(), is(1));
+        assertThat(testee.size(), is(2));
+        for (TestClass t : testee)
+            assertThat(t.foo, is(Matchers.not(greaterThan(4))));
     }
 
     @Test
-    public void testLowerThan()
+    public void testAndSameTableDifferentProperties()
     {
-        final TestClass tc = EntityMatcher.matcher(TestClass.class);
-        final Builder<TestClass> builder = EntityMatcher.builder(tc);
-
-        final PreparedQuery<TestClass> query = builder.match(tc.getFoo(), lt(4)).build();
-        assertThat(query.getMatching(em).size(), is(1));
+        final TestClass tc = JavaBeanBasedMatcher.matcher(TestClass.class);
+        final TestClass testee = matcher.singleMatch(TestClass.class, match(tc.getFoo(), lt(4)).and(tc.getBar(), eq("Bye")));
+        assertThat(testee.foo, is(lessThan(4)));
+        assertThat(testee.bar, is("Bye"));
     }
 
     @Test
-    public void testSameTableAnd()
+    public void testOrSameTableDifferentProperties()
     {
-        final TestClass tc = EntityMatcher.matcher(TestClass.class);
-        final Builder<TestClass> builder = EntityMatcher.builder(tc);
-
-        final PreparedQuery<TestClass> query = builder.match(tc.getFoo(), lt(4)).and(tc.getBar(), eq("Bye")).build();
-        assertThat(query.getMatching(em).size(), is(1));
+        final TestClass tc = JavaBeanBasedMatcher.matcher(TestClass.class);
+        final List<TestClass> testee = matcher.match(TestClass.class, match(tc.getFoo(), lt(4)).or(tc.getBar(), eq("Bye")));
+        for (TestClass t : testee)
+        {
+            final boolean lt4 = t.foo < 4;
+            final boolean isBye = "Bye".equals(t.bar);
+            assertThat(lt4 || isBye, is(true));
+        }
     }
 
     @Test
-    public void testSameTableOr()
+    public void testOrSameTableSameProperty()
     {
-        final TestClass tc = EntityMatcher.matcher(TestClass.class);
-        final Builder<TestClass> builder = EntityMatcher.builder(tc);
-
-        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), eq("Hello").or(eq("Bye"))).build();
-        assertThat(query.getMatching(em).size(), is(2));
+        final TestClass tc = JavaBeanBasedMatcher.matcher(TestClass.class);
+        final List<TestClass> testee = matcher.match(TestClass.class, match(tc.getBar(), eq("Hello").or(eq("Bye"))));
+        final List<String> bars = Arrays.asList("Hello", "Bye");
+        for (TestClass t : testee)
+            assertThat(bars.contains(t.bar), is(true));
     }
 
     @Test
     public void testSingleJoin()
     {
-        final TestClass tc = EntityMatcher.matcher(TestClass.class);
-        final TestJoin tj = EntityMatcher.matcher(TestJoin.class);
-        final Builder<TestClass> builder = EntityMatcher.builder(tc, tj);
-
-        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), join(tj.getBar())).build();
-        assertThat(query.getMatching(em).size(), is(2));
+        final TestJoin tj = JavaBeanBasedMatcher.matcher(TestJoin.class);
+        final List<TestClass> joins = matcher.match(TestClass.class, match(tj.getBar()));
+        assertThat(joins.size(), is(2));
     }
 
     @Test
     public void testMultipleJoin()
     {
-        final TestClass tc = EntityMatcher.matcher(TestClass.class);
-        final TestJoin tj = EntityMatcher.matcher(TestJoin.class);
-        final TestOther to = EntityMatcher.matcher(TestOther.class);
-        final Builder<TestClass> builder = EntityMatcher.builder(tc, tj, to);
-
-        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), join(tj.getBar())).and(tj.getBar(), join(to.getBar()))
-                .build();
-        assertThat(query.getMatching(em).size(), is(1));
+        final TestJoin tj = JavaBeanBasedMatcher.matcher(TestJoin.class);
+        final TestOther to = JavaBeanBasedMatcher.matcher(TestOther.class);
+        final TestClass join = matcher.singleMatch(TestClass.class, match(tj.getBar()).and(match(to.getBar())));
+        assertThat(join, is(Matchers.not(nullValue())));
     }
 
     @Test
     public void testIn()
     {
-        final TestClass tc = EntityMatcher.matcher(TestClass.class);
-        final Builder<TestClass> builder = EntityMatcher.builder(tc);
-
-        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), in(Arrays.asList("Hello", "Bye"))).build();
-        assertThat(query.getMatching(em).size(), is(2));
+        final TestClass tc = JavaBeanBasedMatcher.matcher(TestClass.class);
+        final List<String> bars = Arrays.asList("Hello", "Bye");
+        final List<TestClass> testee = matcher.match(TestClass.class, match(tc.getBar(), in(bars)));
+        for (TestClass t : testee)
+            assertThat(bars.contains(t.bar), is(true));
     }
 
     @Test
-    public void testInNative()
+    public void testNotNot()
     {
-        final TestClass tc = EntityMatcher.matcher(TestClass.class);
-        final Builder<TestClass> builder = EntityMatcher.builder(tc);
-
-        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), in(Arrays.asList("Hello", "Bye"))).nativeQuery(true)
-                .build();
-        assertThat(query.getMatching(em).size(), is(2));
+        final TestClass tc = JavaBeanBasedMatcher.matcher(TestClass.class);
+        final List<TestClass> testee = matcher.match(TestClass.class, match(tc.getBar(), not(not(eq("Hello").or(eq("Bye"))))));
+        final List<String> bars = Arrays.asList("Hello", "Bye");
+        for (TestClass t : testee)
+            assertThat(bars.contains(t.bar), is(true));
     }
 
     @Test
-    public void testNative()
+    public void testBetween()
     {
-        final TestClass tc = EntityMatcher.matcher(TestClass.class);
-        final Builder<TestClass> builder = EntityMatcher.builder(tc);
-
-        final PreparedQuery<TestClass> query = builder.match(tc.getBar(), like("Hell%").or(like("By%"))).nativeQuery(true)
-                .build();
-        assertThat(query.getMatching(em).size(), is(2));
-    }
-
-    @Test
-    public void testCustomSelectUsingJavaBean()
-    {
-        final TestClass tc = EntityMatcher.matcher(TestClass.class);
-        final Builder<TestClass> builder = EntityMatcher.builder(tc);
-
-        final PreparedQuery<TestOther> useObjectWithBarProperty = builder.select(tc.getBar()).match(tc.getBar(), like("Hell%"))
-                .build(TestOther.class);
-        final TestOther to = useObjectWithBarProperty.getSingleMatching(em);
-
-        assertThat(to.bar, is("Hello"));
-        assertThat(to.foo, is(0));
-    }
-
-    @Test
-    public void testCustomSelectDirectMapping()
-    {
-        final TestClass tc = EntityMatcher.matcher(TestClass.class);
-        final Builder<TestClass> builder = EntityMatcher.builder(tc);
-
-        final PreparedQuery<String> stringQuery = builder.select(tc.getBar()).match(tc.getBar(), like("Hell%"))
-                .build(String.class);
-        assertThat(stringQuery.getSingleMatching(em), is("Hello"));
-    }
-
-    @Test
-    public void testMax()
-    {
-        final TestClass tc = EntityMatcher.matcher(TestClass.class);
-        final Builder<TestClass> builder = EntityMatcher.builder(tc);
-
-        final PreparedQuery<Integer> stringQuery = builder.select(max(tc.getFoo())).build(Integer.class);
-        assertThat(stringQuery.getSingleMatching(em), is(6));
-    }
-
-    @Test
-    public void testMin()
-    {
-        final TestClass tc = EntityMatcher.matcher(TestClass.class);
-        final Builder<TestClass> builder = EntityMatcher.builder(tc);
-
-        final PreparedQuery<Integer> stringQuery = builder.select(min(tc.getFoo())).build(Integer.class);
-        assertThat(stringQuery.getSingleMatching(em), is(3));
-    }
-
-    @Test
-    public void testCountDistinct()
-    {
-        final TestClass tc = EntityMatcher.matcher(TestClass.class);
-        final Builder<TestClass> builder = EntityMatcher.builder(tc);
-
-        // FIXME: Conversion operations within the EntityMatcher (this should return an Integer).
-        final PreparedQuery<BigInteger> stringQuery = builder.select(count(distinct(tc.getBar()))).nativeQuery(true)
-                .build(BigInteger.class);
-        assertThat(stringQuery.getSingleMatching(em).intValue(), is(3));
-    }
-
-    @Test
-    public void testCount()
-    {
-        final TestClass tc = EntityMatcher.matcher(TestClass.class);
-        final Builder<TestClass> builder = EntityMatcher.builder(tc);
-
-        // FIXME: Conversion operations within the EntityMatcher (this should return an Integer).
-        final PreparedQuery<BigInteger> stringQuery = builder.select(count(tc.getBar())).nativeQuery(true)
-                .build(BigInteger.class);
-        assertThat(stringQuery.getSingleMatching(em).intValue(), is(3));
-    }
-
-    @Test
-    public void testDistinct()
-    {
-        final TestOther to = EntityMatcher.matcher(TestOther.class);
-        final Builder<TestOther> builder = EntityMatcher.builder(to);
-
-        final PreparedQuery<Integer> stringQuery = builder.select(distinct(to.getBar())).build(Integer.class);
-        assertThat(stringQuery.getMatching(em).size(), is(2));
-    }
-
-    @Test
-    public void testMaxDistinct()
-    {
-        final TestOther to = EntityMatcher.matcher(TestOther.class);
-        final Builder<TestOther> builder = EntityMatcher.builder(to);
-
-        final PreparedQuery<Integer> stringQuery = builder.select(max(distinct(to.getFoo()))).nativeQuery(true)
-                .build(Integer.class);
-        assertThat(stringQuery.getSingleMatching(em), is(6));
-    }
-
-    @Test
-    @Ignore
-    public void trySignatures()
-    {
-        final TestClass tc = EntityMatcher.matcher(TestClass.class);
-        final TestJoin tj = EntityMatcher.matcher(TestJoin.class);
-        final TestOther to = EntityMatcher.matcher(TestOther.class);
-
-        final Builder<TestClass>.LhsRhsStatementBuilder composer = EntityMatcher.builder(tc, tj, to)
-                .match(tc.getBar(), like("Hello").or(like("Bye"))) //
-                .and(tc.getBar(), gt(1)) //
-                .and(tc.getBar(), join(tj.getBar())).and(tj.getBar(), join(to.getBar()));
-
-        System.out.println(composer.toString());
-    }
-
-    @Test
-    public void orderBy()
-    {
-        final TestClass tc = EntityMatcher.matcher(TestClass.class);
-        final Builder<TestClass> builder = EntityMatcher.builder(tc);
-
-        final PreparedQuery<TestClass> stringQuery = builder.orderBy(tc.getFoo()).build();
-        int next = Integer.MIN_VALUE;
-        for (TestClass each : stringQuery.getMatching(em))
+        final TestClass tc = JavaBeanBasedMatcher.matcher(TestClass.class);
+        final List<TestClass> testee = matcher.match(TestClass.class, match(tc.getFoo(), between(3, 5)));
+        for (TestClass t : testee)
         {
-            next = Math.max(each.getFoo(), next);
-            assertThat(each.getFoo(), is(next));
+            assertThat(t.foo, is(greaterThanOrEqualTo(3)));
+            assertThat(t.foo, is(lessThanOrEqualTo(5)));
         }
     }
 
-    @Test
-    // TODO Review
-    public void havingCount()
-    {
-        final TestOther to = EntityMatcher.matcher(TestOther.class);
-        final Builder<TestOther> builder = EntityMatcher.builder(to);
-
-        final PreparedQuery<Integer> stringQuery = builder.select(count(to.getFoo())).groupBy(to.getBar())
-                .having(count(to.getFoo()), gt(2)).nativeQuery(true).build(Integer.class);
-        
-        final Integer res = stringQuery.getSingleMatching(em);
-        assertThat(res.intValue(), is(3));
-    }
+    // @Test
+    // public void testGreaterThan()
+    // {
+    // final TestClass tc = JavaBeanMatcher.matcher(TestClass.class);
+    // final Builder<TestClass> builder = JavaBeanMatcher.builder(tc);
+    //
+    // final PreparedQuery<TestClass> query = builder.match(tc.getFoo(), gt(4)).build();
+    // assertThat(query.getMatching(em).size(), is(2));
+    // }
+    //
+    // @Test
+    // public void testNotGreaterThan()
+    // {
+    // final TestClass tc = JavaBeanMatcher.matcher(TestClass.class);
+    // final Builder<TestClass> builder = JavaBeanMatcher.builder(tc);
+    //
+    // final PreparedQuery<TestClass> query = builder.match(tc.getFoo(), not(gt(4))).build();
+    // assertThat(query.getMatching(em).size(), is(1));
+    // }
+    //
+    // @Test
+    // public void testLowerThan()
+    // {
+    // final TestClass tc = JavaBeanMatcher.matcher(TestClass.class);
+    // final Builder<TestClass> builder = JavaBeanMatcher.builder(tc);
+    //
+    // final PreparedQuery<TestClass> query = builder.match(tc.getFoo(), lt(4)).build();
+    // assertThat(query.getMatching(em).size(), is(1));
+    // }
+    //
+    // @Test
+    // public void testSameTableAnd()
+    // {
+    // final TestClass tc = JavaBeanMatcher.matcher(TestClass.class);
+    // final Builder<TestClass> builder = JavaBeanMatcher.builder(tc);
+    //
+    // final PreparedQuery<TestClass> query = builder.match(tc.getFoo(), lt(4)).and(tc.getBar(),
+    // eq("Bye")).build();
+    // assertThat(query.getMatching(em).size(), is(1));
+    // }
+    //
+    // @Test
+    // public void testSameTableOr()
+    // {
+    // final TestClass tc = JavaBeanMatcher.matcher(TestClass.class);
+    // final Builder<TestClass> builder = JavaBeanMatcher.builder(tc);
+    //
+    // final PreparedQuery<TestClass> query = builder.match(tc.getBar(),
+    // eq("Hello").or(eq("Bye"))).build();
+    // assertThat(query.getMatching(em).size(), is(2));
+    // }
+    //
+    // @Test
+    // public void testSingleJoin()
+    // {
+    // final TestClass tc = JavaBeanMatcher.matcher(TestClass.class);
+    // final TestJoin tj = JavaBeanMatcher.matcher(TestJoin.class);
+    // final Builder<TestClass> builder = JavaBeanMatcher.builder(tc, tj);
+    //
+    // final PreparedQuery<TestClass> query = builder.match(tc.getBar(), join(tj.getBar())).build();
+    // assertThat(query.getMatching(em).size(), is(2));
+    // }
+    //
+    // @Test
+    // public void testMultipleJoin()
+    // {
+    // final TestClass tc = JavaBeanMatcher.matcher(TestClass.class);
+    // final TestJoin tj = JavaBeanMatcher.matcher(TestJoin.class);
+    // final TestOther to = JavaBeanMatcher.matcher(TestOther.class);
+    // final Builder<TestClass> builder = JavaBeanMatcher.builder(tc, tj, to);
+    //
+    // final PreparedQuery<TestClass> query = builder.match(tc.getBar(),
+    // join(tj.getBar())).and(tj.getBar(), join(to.getBar()))
+    // .build();
+    // assertThat(query.getMatching(em).size(), is(1));
+    // }
+    //
+    // @Test
+    // public void testIn()
+    // {
+    // final TestClass tc = JavaBeanMatcher.matcher(TestClass.class);
+    // final Builder<TestClass> builder = JavaBeanMatcher.builder(tc);
+    //
+    // final PreparedQuery<TestClass> query = builder.match(tc.getBar(), in(Arrays.asList("Hello",
+    // "Bye"))).build();
+    // assertThat(query.getMatching(em).size(), is(2));
+    // }
+    //
+    // @Test
+    // public void testInNative()
+    // {
+    // final TestClass tc = JavaBeanMatcher.matcher(TestClass.class);
+    // final Builder<TestClass> builder = JavaBeanMatcher.builder(tc);
+    //
+    // final PreparedQuery<TestClass> query = builder.match(tc.getBar(), in(Arrays.asList("Hello",
+    // "Bye"))).nativeQuery(true)
+    // .build();
+    // assertThat(query.getMatching(em).size(), is(2));
+    // }
+    //
+    // @Test
+    // public void testNative()
+    // {
+    // final TestClass tc = JavaBeanMatcher.matcher(TestClass.class);
+    // final Builder<TestClass> builder = JavaBeanMatcher.builder(tc);
+    //
+    // final PreparedQuery<TestClass> query = builder.match(tc.getBar(),
+    // like("Hell%").or(like("By%"))).nativeQuery(true)
+    // .build();
+    // assertThat(query.getMatching(em).size(), is(2));
+    // }
+    //
+    // @Test
+    // public void testCustomSelectUsingJavaBean()
+    // {
+    // final TestClass tc = JavaBeanMatcher.matcher(TestClass.class);
+    // final Builder<TestClass> builder = JavaBeanMatcher.builder(tc);
+    //
+    // final PreparedQuery<TestOther> useObjectWithBarProperty =
+    // builder.select(tc.getBar()).match(tc.getBar(), like("Hell%"))
+    // .build(TestOther.class);
+    // final TestOther to = useObjectWithBarProperty.getSingleMatching(em);
+    //
+    // assertThat(to.bar, is("Hello"));
+    // assertThat(to.foo, is(0));
+    // }
+    //
+    // @Test
+    // public void testCustomSelectDirectMapping()
+    // {
+    // final TestClass tc = JavaBeanMatcher.matcher(TestClass.class);
+    // final Builder<TestClass> builder = JavaBeanMatcher.builder(tc);
+    //
+    // final PreparedQuery<String> stringQuery = builder.select(tc.getBar()).match(tc.getBar(),
+    // like("Hell%"))
+    // .build(String.class);
+    // assertThat(stringQuery.getSingleMatching(em), is("Hello"));
+    // }
+    //
+    // @Test
+    // public void testMax()
+    // {
+    // final TestClass tc = JavaBeanMatcher.matcher(TestClass.class);
+    // final Builder<TestClass> builder = JavaBeanMatcher.builder(tc);
+    //
+    // final PreparedQuery<Integer> stringQuery =
+    // builder.select(max(tc.getFoo())).build(Integer.class);
+    // assertThat(stringQuery.getSingleMatching(em), is(6));
+    // }
+    //
+    // @Test
+    // public void testMin()
+    // {
+    // final TestClass tc = JavaBeanMatcher.matcher(TestClass.class);
+    // final Builder<TestClass> builder = JavaBeanMatcher.builder(tc);
+    //
+    // final PreparedQuery<Integer> stringQuery =
+    // builder.select(min(tc.getFoo())).build(Integer.class);
+    // assertThat(stringQuery.getSingleMatching(em), is(3));
+    // }
+    //
+    // @Test
+    // public void testCountDistinct()
+    // {
+    // final TestClass tc = JavaBeanMatcher.matcher(TestClass.class);
+    // final Builder<TestClass> builder = JavaBeanMatcher.builder(tc);
+    //
+    // // FIXME: Conversion operations within the EntityMatcher (this should return an Integer).
+    // final PreparedQuery<BigInteger> stringQuery =
+    // builder.select(count(distinct(tc.getBar()))).nativeQuery(true)
+    // .build(BigInteger.class);
+    // assertThat(stringQuery.getSingleMatching(em).intValue(), is(3));
+    // }
+    //
+    // @Test
+    // public void testCount()
+    // {
+    // final TestClass tc = JavaBeanMatcher.matcher(TestClass.class);
+    // final Builder<TestClass> builder = JavaBeanMatcher.builder(tc);
+    //
+    // // FIXME: Conversion operations within the EntityMatcher (this should return an Integer).
+    // final PreparedQuery<BigInteger> stringQuery =
+    // builder.select(count(tc.getBar())).nativeQuery(true)
+    // .build(BigInteger.class);
+    // assertThat(stringQuery.getSingleMatching(em).intValue(), is(3));
+    // }
+    //
+    // @Test
+    // public void testDistinct()
+    // {
+    // final TestOther to = JavaBeanMatcher.matcher(TestOther.class);
+    // final Builder<TestOther> builder = JavaBeanMatcher.builder(to);
+    //
+    // final PreparedQuery<Integer> stringQuery =
+    // builder.select(distinct(to.getBar())).build(Integer.class);
+    // assertThat(stringQuery.getMatching(em).size(), is(2));
+    // }
+    //
+    // @Test
+    // public void testMaxDistinct()
+    // {
+    // final TestOther to = JavaBeanMatcher.matcher(TestOther.class);
+    // final Builder<TestOther> builder = JavaBeanMatcher.builder(to);
+    //
+    // final PreparedQuery<Integer> stringQuery =
+    // builder.select(max(distinct(to.getFoo()))).nativeQuery(true)
+    // .build(Integer.class);
+    // assertThat(stringQuery.getSingleMatching(em), is(6));
+    // }
+    //
+    // @Test
+    // @Ignore
+    // public void trySignatures()
+    // {
+    // final TestClass tc = JavaBeanMatcher.matcher(TestClass.class);
+    // final TestJoin tj = JavaBeanMatcher.matcher(TestJoin.class);
+    // final TestOther to = JavaBeanMatcher.matcher(TestOther.class);
+    //
+    // final Builder<TestClass>.LhsRhsStatementBuilder composer = JavaBeanMatcher.builder(tc, tj,
+    // to)
+    // .match(tc.getBar(), like("Hello").or(like("Bye"))) //
+    // .and(tc.getBar(), gt(1)) //
+    // .and(tc.getBar(), join(tj.getBar())).and(tj.getBar(), join(to.getBar()));
+    //
+    // System.out.println(composer.toString());
+    // }
+    //
+    // @Test
+    // public void orderBy()
+    // {
+    // final TestClass tc = JavaBeanMatcher.matcher(TestClass.class);
+    // final Builder<TestClass> builder = JavaBeanMatcher.builder(tc);
+    //
+    // final PreparedQuery<TestClass> stringQuery = builder.orderBy(tc.getFoo()).build();
+    // int next = Integer.MIN_VALUE;
+    // for (TestClass each : stringQuery.getMatching(em))
+    // {
+    // next = Math.max(each.getFoo(), next);
+    // assertThat(each.getFoo(), is(next));
+    // }
+    // }
+    //
+    // @Test
+    // // TODO Review
+    // public void havingCount()
+    // {
+    // final TestOther to = JavaBeanMatcher.matcher(TestOther.class);
+    // final Builder<TestOther> builder = JavaBeanMatcher.builder(to);
+    //
+    // final PreparedQuery<Integer> stringQuery =
+    // builder.select(count(to.getFoo())).groupBy(to.getBar())
+    // .having(count(to.getFoo()), gt(2)).nativeQuery(true).build(Integer.class);
+    //
+    // final Integer res = stringQuery.getSingleMatching(em);
+    // assertThat(res.intValue(), is(3));
+    // }
 }

@@ -22,12 +22,11 @@
 package org.entitymatcher;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Map;
 import java.util.Observable;
 import java.util.Observer;
-import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
@@ -35,10 +34,24 @@ import javassist.util.proxy.MethodHandler;
 import javassist.util.proxy.ProxyFactory;
 import javassist.util.proxy.ProxyObject;
 
-public class InvokationCapturer implements Observer
+public class InvokationCapturer
 {
     private static final Map<Class<?>, Class<?>> proxy2Class = new ConcurrentHashMap<>();
-    private final Stack<Capture> captures = new Stack<>();
+    private static final ThreadLocal<Deque<Capture>> threadCaptures = new ThreadLocal<>();
+
+    private static final Observer captureObserver = new Observer()
+    {
+        @Override
+        public void update(Observable o, Object arg)
+        {
+            Deque<Capture> deque = threadCaptures.get();
+            if (deque == null) {
+                deque = new ArrayDeque<>();
+                threadCaptures.set(deque);
+            }
+            deque.push((Capture) arg);
+        }
+    };
 
     /**
      * Returns an instance of a class which might be used to match {@link Statements}.
@@ -55,6 +68,7 @@ public class InvokationCapturer implements Observer
             final T newInstance = (T) instance.newInstance();
             ((ProxyObject) newInstance).setHandler(new ObservableInvokation());
             proxy2Class.put(newInstance.getClass(), clazz);
+            observe(newInstance);
             return newInstance;
         }
         catch (InstantiationException | IllegalAccessException e)
@@ -64,37 +78,23 @@ public class InvokationCapturer implements Observer
     }
 
     @SuppressWarnings("unchecked")
-    protected <T> Class<T> observe(T t)
+    private static <T> Class<T> observe(T t)
     {
         if (t instanceof ProxyObject && proxy2Class.containsKey(t.getClass()))
         {
             final MethodHandler mh = ((ProxyObject) t).getHandler();
             if (mh instanceof ObservableInvokation)
             {
-                ((ObservableInvokation) mh).addObserver(this);
+                ((ObservableInvokation) mh).addObserver(captureObserver);
                 return (Class<T>) proxy2Class.get(t.getClass());
             }
         }
         throw new RuntimeException("Must be instantiated with EntityMatcher#matcher()");
     }
 
-    protected List<Class<?>> observe(Object... os)
+    public static Capture getLastCapture()
     {
-        final List<Class<?>> classes = new ArrayList<>();
-        for (Object o : os)
-            classes.add(observe(o));
-        
-        return classes;
-    }
-
-    @Override
-    public void update(Observable o, Object arg)
-    {
-        captures.push((Capture) arg);
-    }
-
-    protected Capture getLastCapture()
-    {
+        final Deque<Capture> captures = threadCaptures.get();
         return captures.isEmpty() ? null : captures.pop();
     }
 

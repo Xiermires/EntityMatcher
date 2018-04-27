@@ -21,27 +21,55 @@
  *******************************************************************************/
 package org.entitymatcher;
 
-import javax.persistence.Query;
+import java.lang.reflect.Method;
+import java.util.regex.Pattern;
 
-public interface ParameterBinding
+import org.entitymatcher.InvokationCapturer.Capture;
+
+public class JavaBeanBasedMatcher
 {
     /**
-     * Binds the object as the next parameter of the query.
+     * Returns an instance of a class which might be used to match {@link Statements}.
      */
-    String bind(Object o);
-
-    /**
-     * Sets the bound parameters into the query.
-     */
-    String solveQuery(String rawQuery, Query query);
+    public static <T> T matcher(Class<T> clazz)
+    {
+        return InvokationCapturer.capturer(clazz, m -> isBeanGetter(m));
+    }
     
-    /**
-     * Binds the object as the next parameter of the query.
-     */
-    String createParam(Object o);
+    public static Capture getLastCapture()
+    {
+        return InvokationCapturer.getLastCapture();
+    }
 
-    /**
-     * Sets the bound parameters into the query.
-     */
-    String resolveParams(String rawQuery, Query query);
+    static final Pattern isGetter = Pattern.compile("(get|is)(.+)");
+
+    private static boolean isBeanGetter(Method m)
+    {
+        return isGetter.matcher(m.getName()).matches();
+    }
+
+    static String toAlias(String table)
+    {
+        return table == null ? null : table.toLowerCase();
+    }
+
+    static String toTable(String alias)
+    {
+        return alias == null ? null : alias.substring(0, 1).toUpperCase().concat(alias.substring(1));
+    }
+
+    static String camelUp(String s)
+    {
+        return s.substring(0, 1).toUpperCase().concat(s.substring(1));
+    }
+
+    static String camelDown(String s)
+    {
+        return s.substring(0, 1).toLowerCase().concat(s.substring(1));
+    }
+
+    static String tableColumn(String table, String column)
+    {
+        return table == null && column == null ? null : table.concat(".").concat(column);
+    }
 }
