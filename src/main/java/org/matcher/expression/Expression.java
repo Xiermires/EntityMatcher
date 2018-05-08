@@ -19,79 +19,66 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *******************************************************************************/
-package org.entitymatcher;
+package org.matcher.expression;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
+import java.util.Set;
 
-public class Arborescence<T> implements Node<T>
-{
-    private T data;
-    private Node<T> parent;
-    private Deque<Arborescence<T>> children;
+import org.matcher.Arborescence;
+import org.matcher.ParameterBinding;
+import org.matcher.operator.Operator;
 
-    public Arborescence()
-    {
-        this(null, null);
+public abstract class Expression<T extends Operator, E> extends Arborescence<Expression<T, E>> {
+
+    private final E value;
+    private T operator;
+
+    private Class<?> referent;
+    private String property;
+
+    public Expression(T operator) {
+	this(operator, null);
     }
 
-    public Arborescence(T data)
-    {
-        this(data, null);
+    public Expression(T operator, E value) {
+	this.operator = operator;
+	this.value = value;
     }
 
-    public Arborescence(T data, Arborescence<T> parent)
-    {
-        this.data = data;
-        this.parent = parent;
-        children = new ArrayDeque<>();
+    public abstract String resolveFromClause(Set<Class<?>> seenReferents);
+
+    public abstract String resolve(ParameterBinding bindings);
+
+    public T getOperator() {
+	return operator;
     }
 
-    @Override
-    public T getData()
-    {
-        return data;
+    public void setReferent(Class<?> referent) {
+	this.referent = referent;
     }
 
-    @Override
-    public void setData(T data)
-    {
-        this.data = data;
+    public Class<?> getReferent() {
+	return referent;
     }
 
-    @Override
-    public Node<T> getParent()
-    {
-        return parent;
+    public void setProperty(String property) {
+	this.property = property;
     }
 
-    @Override
-    public void setParent(Node<T> parent)
-    {
-        this.parent = parent;
+    public String getProperty() {
+	return property;
     }
 
-    @Override
-    public boolean hasParent()
-    {
-        return parent != null;
+    public E getValue() {
+	return value;
     }
 
-    @Override
-    public void addChild(T child)
-    {
-        children.add(new Arborescence<T>(child, this));
-    }
-
-    @Override
-    public Deque<Arborescence<T>> getChildren()
-    {
-        return children;
-    }
-
-    @Override
-    public boolean hasChildren()
-    {
-        return !children.isEmpty();
+    public void overwriteNullReferenceAndProperties(Class<?> referent, String property) {
+	if (getReferent() == null) {
+	    setReferent(referent);
+	}
+	if (getProperty() == null) {
+	    setProperty(property);
+	}
+	getChildren().forEach(node -> node.getData().overwriteNullReferenceAndProperties(referent, property));
     }
 }

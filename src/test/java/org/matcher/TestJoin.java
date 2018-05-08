@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2017, Xavier Miret Andres <xavier.mires@gmail.com>
+ * Copyright (c) 2018, Xavier Miret Andres <xavier.mires@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -19,29 +19,55 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *******************************************************************************/
-package org.entitymatcher;
+package org.matcher;
 
-import javax.persistence.Query;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.Table;
 
-public interface ParameterBinding
+@Entity
+@Table(name = "TestJoin_v2")
+public class TestJoin
 {
-    /**
-     * Binds the object as the next parameter of the query.
-     */
-    String bind(Object o);
+    @Id
+    @GeneratedValue
+    long id;
 
-    /**
-     * Sets the bound parameters into the query.
-     */
-    String solveQuery(String rawQuery, Query query);
-    
-    /**
-     * Binds the object as the next parameter of the query.
-     */
-    String createParam(Object o);
+    int foo;
 
-    /**
-     * Sets the bound parameters into the query.
-     */
-    String resolveParams(String rawQuery, Query query);
+    @Column(name = "Bar")
+    String bar;
+
+    // test only
+    public TestJoin(int foo, String bar)
+    {
+        this.foo = foo;
+        this.bar = bar;
+    }
+
+    public TestJoin()
+    {
+    }
+
+    public int getFoo()
+    {
+        return foo;
+    }
+
+    public void setFoo(int foo)
+    {
+        this.foo = foo;
+    }
+
+    public String getBar()
+    {
+        return bar;
+    }
+
+    public void setBar(String bar)
+    {
+        this.bar = bar;
+    }
 }

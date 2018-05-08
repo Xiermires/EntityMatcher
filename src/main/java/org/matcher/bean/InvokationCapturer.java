@@ -19,11 +19,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *******************************************************************************/
-package org.entitymatcher;
+package org.matcher.bean;
 
 import java.lang.reflect.Method;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
 import java.util.Map;
 import java.util.Observable;
 import java.util.Observer;
@@ -96,6 +98,17 @@ public class InvokationCapturer
     {
         final Deque<Capture> captures = threadCaptures.get();
         return captures.isEmpty() ? null : captures.pop();
+    }
+    
+    public static List<Capture> getLastCaptures(int n) {
+	final List<Capture> captures = new ArrayList<>();
+	for (int i=0; i<n;i++) {
+	    final Capture last = getLastCapture();
+	    if (last != null) {
+		captures.add(last);
+	    }
+	}
+	return captures;
     }
 
     static class ObservableInvokation extends Observable implements MethodHandler

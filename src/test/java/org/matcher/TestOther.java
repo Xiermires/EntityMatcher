@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2017, Xavier Miret Andres <xavier.mires@gmail.com>
+ * Copyright (c) 2018, Xavier Miret Andres <xavier.mires@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -19,7 +19,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *******************************************************************************/
-package org.entitymatcher;
+package org.matcher;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -45,7 +45,7 @@ public class TestOther
     {
     }
 
-    TestOther(int foo, String bar)
+    public TestOther(int foo, String bar)
     {
         this.foo = foo;
         this.bar = bar;

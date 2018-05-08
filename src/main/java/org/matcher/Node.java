@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2017, Xavier Miret Andres <xavier.mires@gmail.com>
+ * Copyright (c) 2018, Xavier Miret Andres <xavier.mires@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -19,40 +19,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *******************************************************************************/
-package org.entitymatcher;
+package org.matcher;
 
-import java.util.List;
+import java.util.Deque;
 
-/**
- * This class represents a statement that takes two tables and two columns.
- * <p>
- * It takes the form : LEFT_HAND_SIDE_TABLE_AND_COLUMN OPERATOR RIGHT_HAND_SIDE_TABLE_AND_COLUMN
- * <p>
- * The table alias, as well as the column are passed to the
- * {@link #toStatement(String, String, String, String)} via lhs / rhs args.
- */
-public class LhsRhsStatement<T> implements Statement
-{
-    private final Statement statement;
+public interface Node<T> {
+    
+    T getData();
 
-    // Identifies INNER / OUTER / FETCH joins which must be placed in the FROM clause (see JPA 2.0
-    // specification).
-    private final boolean joinRelationship;
+    void setData(T data);
 
-    public LhsRhsStatement(Statement statement, boolean relationship)
-    {
-        this.statement = statement;
-        this.joinRelationship = relationship;
-    }
+    Node<T> getParent();
 
-    @Override
-    public List<Part> toStatement(String lhsExpr, String rhsExpr, ParameterBinding params)
-    {
-        return statement.toStatement(lhsExpr, rhsExpr, params);
-    }
+    void setParent(T parent);
 
-    protected boolean isJoinRelationship()
-    {
-        return joinRelationship;
-    }
+    boolean hasParent();
+
+    void addChild(T child);
+
+    Deque<Node<T>> getChildren();
+
+    boolean hasChildren();
 }

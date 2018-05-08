@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2017, Xavier Miret Andres <xavier.mires@gmail.com>
+ * Copyright (c) 2018, Xavier Miret Andres <xavier.mires@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -19,55 +19,45 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *******************************************************************************/
-package org.entitymatcher;
+package org.matcher;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Table;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-@Entity
-@Table(name = "TestJoin_v2")
-public class TestJoin
-{
-    @Id
-    @GeneratedValue
-    long id;
+import javax.persistence.Query;
 
-    int foo;
+/**
+ * This class binds jpql parameters for a single query and stores the parameters for later solving.
+ */
+public class ParameterBindingImpl implements ParameterBinding {
 
-    @Column(name = "Bar")
-    String bar;
+    private int suffix;
+    final List<Object> params = new ArrayList<Object>();
 
-    // test only
-    TestJoin(int foo, String bar)
-    {
-        this.foo = foo;
-        this.bar = bar;
+    @Override
+    public String createParam(Object o) {
+	if (o == null)
+	    return " IS NULL";
+
+	params.add(o);
+	return "?" + suffix++;
     }
 
-    public TestJoin()
-    {
-    }
+    private final Pattern jpql = Pattern.compile("\\?(\\d+)");
 
-    public int getFoo()
-    {
-        return foo;
-    }
+    @Override
+    public void resolveParams(String rawQuery, Query query) {
+	final Matcher matcher = jpql.matcher(rawQuery);
+	final Iterator<Object> it = params.iterator();
+	while (matcher.find()) {
+	    assert it.hasNext() : "bad param binding";
+	    final String key = matcher.group(1);
+	    final Object value = it.next();
 
-    public void setFoo(int foo)
-    {
-        this.foo = foo;
-    }
-
-    public String getBar()
-    {
-        return bar;
-    }
-
-    public void setBar(String bar)
-    {
-        this.bar = bar;
+	    query.setParameter(Integer.valueOf(key), value);
+	}
     }
 }

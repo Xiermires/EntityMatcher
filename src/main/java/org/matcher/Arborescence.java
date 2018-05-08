@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2017, Xavier Miret Andres <xavier.mires@gmail.com>
+ * Copyright (c) 2018, Xavier Miret Andres <xavier.mires@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -19,55 +19,67 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *******************************************************************************/
-package org.entitymatcher;
+package org.matcher;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Table;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
-@Entity
-@Table(name = "TestClass")
-public class TestClass
-{
-    @Id
-    @GeneratedValue
-    long id;
-    
-    int foo;
-    
-    @Column(name = "Bar_v2")
-    String bar;
+public class Arborescence<T> implements Node<T> {
+    private T data;
+    private Node<T> parent;
+    private Deque<Node<T>> children;
 
-    // test only
-    TestClass(int foo, String bar)
-    {
-        this.foo = foo;
-        this.bar = bar;
+    public Arborescence() {
+	this(null, null);
     }
 
-    public TestClass()
-    {   
-    }
-    
-    public int getFoo()
-    {
-        return foo;
+    public Arborescence(T data) {
+	this(data, null);
     }
 
-    public void setFoo(int foo)
-    {
-        this.foo = foo;
+    public Arborescence(T data, Arborescence<T> parent) {
+	this.data = data;
+	this.parent = parent;
+	children = new ArrayDeque<>();
     }
 
-    public String getBar()
-    {
-        return bar;
+    @Override
+    public T getData() {
+	return data;
     }
 
-    public void setBar(String bar)
-    {
-        this.bar = bar;
+    @Override
+    public void setData(T data) {
+	this.data = data;
+    }
+
+    @Override
+    public Node<T> getParent() {
+	return parent;
+    }
+
+    @Override
+    public void setParent(T parent) {
+	this.parent = new Arborescence<T>(parent);
+    }
+
+    @Override
+    public boolean hasParent() {
+	return parent != null;
+    }
+
+    @Override
+    public void addChild(T child) {
+	children.add(new Arborescence<T>(child, this));
+    }
+
+    @Override
+    public Deque<Node<T>> getChildren() {
+	return children;
+    }
+
+    @Override
+    public boolean hasChildren() {
+	return !children.isEmpty();
     }
 }
