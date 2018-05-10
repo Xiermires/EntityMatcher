@@ -55,10 +55,7 @@ public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends 
 	final StringBuilder whereClause = new StringBuilder();
 	final Set<Class<?>> seenReferents = new HashSet<>();
 
-	parseExpressions(getThis(), whereClause, fromClause, seenReferents, bindings);
-	for (Node<T> child : getChildren()) {
-	    parseExpressions(child.getData(), whereClause, fromClause, seenReferents, bindings);
-	}
+	parseExpressions(whereClause, fromClause, seenReferents, bindings);
 
 	// we assume there is always a next referent, while updating the from clause. Remove the last comma.
 	removeLastComma(fromClause);
@@ -70,14 +67,12 @@ public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends 
 	return sb.toString();
     }
 
-    private void parseExpressions(//
-	    T builder, //
-	    StringBuilder whereClause, //
+    protected void parseExpressions(StringBuilder whereClause, //
 	    StringBuilder fromClause, //
 	    Set<Class<?>> seenReferents, //
 	    ParameterBinding bindings) {
 
-	for (Expression<?, ?> expression : builder.getExpressions()) {
+	for (Expression<?, ?> expression : getExpressions()) {
 	    final String resolveFromClause = expression.resolveFromClause(seenReferents);
 	    if (resolveFromClause != null && !resolveFromClause.isEmpty()) {
 		fromClause.append(resolveFromClause);
@@ -88,6 +83,12 @@ public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends 
 	    if (resolve != null && !resolve.isEmpty()) {
 		whereClause.append(resolve);
 		whereClause.append(" ");
+	    }
+	}
+
+	if (hasChildren()) {
+	    for (Node<T> child : getChildren()) {
+		child.getData().parseExpressions(whereClause, fromClause, seenReferents, bindings);
 	    }
 	}
     }
@@ -112,7 +113,7 @@ public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends 
     void initializeBindings() {
 	if (hasChildren()) {
 	    getChildren().forEach(c -> c.getData().initializeBindings());
-	    
+
 	    final Expression<?, ?> bindingExpression = getExpressions().getFirst();
 	    overwriteNullReferenceAndProperties(bindingExpression.getReferent(), bindingExpression.getProperty());
 	} else {
@@ -120,7 +121,7 @@ public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends 
 	    overwriteNullReferenceAndProperties(bindingExpression.getReferent(), bindingExpression.getProperty());
 	}
     }
-    
+
     protected T mergeAfterLastExpression(//
 	    Class<?> referent, //
 	    String property, //

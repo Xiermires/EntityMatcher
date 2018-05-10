@@ -39,6 +39,6 @@ public class BindingExpression extends NonResolvingExpression<Operator, Object> 
 
     @Override
     public String toString() {
-	return " bind(" + (getReferent() == null ? "?" : getReferent().getSimpleName()) + "." + getProperty() + ") -> ";
+	return " bind(" + (getReferent() == null ? "?" : getReferent().getSimpleName()) + "." + (getProperty() == null ? "?" : getProperty()) + ") -> ";
     }
 }
