@@ -21,6 +21,7 @@
  *******************************************************************************/
 package org.matcher.name;
 
+import static org.hamcrest.Matchers.either;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
@@ -29,6 +30,7 @@ import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertThat;
+import static org.matcher.Expressions.closure;
 import static org.matcher.Expressions.not;
 import static org.matcher.name.NameBasedExpressions.between;
 import static org.matcher.name.NameBasedExpressions.count;
@@ -197,6 +199,15 @@ public class NameBasedEntityMatcherTest {
 	final List<String> bars = Arrays.asList("Hello", "Bye");
 	for (TestClass tc : tcs)
 	    assertThat(bars.contains(tc.getBar()), is(true));
+    }
+    
+    @Test
+    public void testClosure() {
+	final List<TestOther> tos = matcher.find(TestOther.class, matching("bar", eq("Snake")).and("foo", closure(eq(5).or(eq(3)))));
+	for (TestOther to : tos) {
+	    assertThat(to.getBar(), is("Snake"));
+	    assertThat(to.getFoo(), either(is(5)).or(is(3)));
+	}
     }
 
     @Test

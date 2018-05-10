@@ -1,5 +1,6 @@
 package org.matcher.bean;
 
+import static org.hamcrest.Matchers.either;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
@@ -8,6 +9,7 @@ import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertThat;
+import static org.matcher.Expressions.closure;
 import static org.matcher.Expressions.not;
 import static org.matcher.bean.BeanBasedExpressions.between;
 import static org.matcher.bean.BeanBasedExpressions.count;
@@ -196,6 +198,16 @@ public class BeanBasedEntityMatcherTest {
 	    assertThat(bars.contains(t.getBar()), is(true));
     }
 
+    @Test
+    public void testClosure() {
+	final TestOther to = BeanBasedMatcher.matcher(TestOther.class);
+	final List<TestOther> tos = matcher.find(TestOther.class, matching(to.getBar(), eq("Snake")).and(to.getFoo(), closure(eq(5).or(eq(3)))));
+	for (TestOther t : tos) {
+	    assertThat(t.getBar(), is("Snake"));
+	    assertThat(t.getFoo(), either(is(5)).or(is(3)));
+	}
+    }
+    
     @Test
     public void testBetween() {
 	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
