@@ -29,7 +29,7 @@ import org.matcher.operator.Operator;
 /**
  * An non-resolving expression where to inherit from if willing to resolve only one case or none of them.
  */
-public abstract class NonResolvingExpression<T extends Operator, E> extends Expression<T, E> {
+public abstract class NonResolvingExpression<T extends Operator, V> extends Expression<T, V> {
 
     public NonResolvingExpression(T operator) {
 	super(operator);
@@ -37,11 +37,11 @@ public abstract class NonResolvingExpression<T extends Operator, E> extends Expr
 
     @Override
     public String resolveFromClause(Set<Class<?>> seenReferents) {
-	return null;
+	return "";
     }
 
     @Override
     public String resolve(ParameterBinding bindings) {
-	return null;
+	return "";
     }
 }

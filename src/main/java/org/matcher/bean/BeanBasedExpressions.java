@@ -16,46 +16,57 @@ public class BeanBasedExpressions extends Expressions {
 
     // select / functions
 
-    public static SelectExpression selection(Object... captures) {
-	final SelectExpression leading = new SelectExpression(NONE);
-
+    public static BeanBasedSelectBuilder<?> selection(Object... captures) {
+	final SelectExpression<?> leading = new SelectExpression<>(NONE);
 	final List<Capture> lastCaptures = InvokationCapturer.getLastCaptures(captures.length);
 	// revert stacked captures to maintain selection order
 	for (int i = lastCaptures.size() - 1; i >= 0; i--) {
-	    leading.addChild(createSelectExpression(PROPERTY(), lastCaptures.get(i)));
+
+	    leading.addChild(createSelectExpression(PROPERTY, lastCaptures.get(i)));
 	}
-	return leading;
+	return new BeanBasedSelectBuilder<>(leading);
     }
 
-    public static SelectExpression selection(SelectExpression other) {
-	return new SelectExpression(other);
+    public static BeanBasedSelectBuilder<?> selection(Object capture, BeanBasedSelectBuilder<?> builder) {
+	final Capture lastCapture = InvokationCapturer.getLastCapture();
+	final Class<?> referent = getReferent(lastCapture);
+	final String property = getPropertyName(lastCapture);
+	builder.overwriteNullReferenceAndProperties(referent, property);
+	return builder;
     }
 
-    public static <T> SelectExpression min(T capture) {
-	return createSelectExpression(MIN(), capture);
+    public static <T> BeanBasedSelectBuilder<?> min(T capture) {
+	return createSelectBuilder(MIN, capture);
     }
 
-    public static <T> SelectExpression max(T capture) {
-	return createSelectExpression(MAX(), capture);
+    public static <T> BeanBasedSelectBuilder<?> max(T capture) {
+	return createSelectBuilder(MAX, capture);
     }
 
-    public static <T> SelectExpression count(T capture) {
-	return createSelectExpression(COUNT(), capture);
+    public static <T> BeanBasedSelectBuilder<?> count(T capture) {
+	return createSelectBuilder(COUNT, capture);
     }
 
-    public static <T> SelectExpression distinct(T capture) {
-	return createSelectExpression(DISTINCT(), capture);
+    public static <T> BeanBasedSelectBuilder<?> distinct(T capture) {
+	return createSelectBuilder(DISTINCT, capture);
     }
 
-    private static <T> SelectExpression createSelectExpression(Selector selector, T capture) {
-	return createSelectExpression(selector, BeanBasedMatcher.getLastCapture());
-    }
-
-    private static SelectExpression createSelectExpression(Selector selector, Capture capture) {
+    private static SelectExpression<?> createSelectExpression(Selector selector, Capture capture) {
 	final Class<?> referent = getReferent(capture);
 	final String property = getPropertyName(capture);
 
-	return new SelectExpression(selector, referent, property);
+	return new SelectExpression<>(selector, referent, property);
+    }
+
+    private static <T> BeanBasedSelectBuilder<?> createSelectBuilder(Selector selector, T capture) {
+	return createSelectBuilder(selector, BeanBasedMatcher.getLastCapture());
+    }
+
+    private static BeanBasedSelectBuilder<?> createSelectBuilder(Selector selector, Capture capture) {
+	final Class<?> referent = getReferent(capture);
+	final String property = getPropertyName(capture);
+
+	return new BeanBasedSelectBuilder<>(new SelectExpression<>(selector, referent, property));
     }
 
     // matchers
@@ -63,7 +74,7 @@ public class BeanBasedExpressions extends Expressions {
     /**
      * Typifies the {@code builder} and all its children with a referent table and a column property.
      */
-    public static <T> BeanBasedExpressionBuilder matching(T capture, BeanBasedExpressionBuilder builder) {
+    public static <T> BeanBasedFromWhereBuilder matching(T capture, BeanBasedFromWhereBuilder builder) {
 	final Capture lastCapture = BeanBasedMatcher.getLastCapture();
 	final Class<?> referent = getReferent(lastCapture);
 	final String property = getPropertyName(lastCapture);
@@ -72,12 +83,12 @@ public class BeanBasedExpressions extends Expressions {
 	return builder;
     }
 
-    public static <T> BeanBasedExpressionBuilder matching(T capture) {
+    public static <T> BeanBasedFromWhereBuilder matching(T capture) {
 	final Capture lastCapture = BeanBasedMatcher.getLastCapture();
 	final Class<?> referent = getReferent(lastCapture);
 	final String property = getPropertyName(lastCapture);
 
-	return new BeanBasedExpressionBuilder(NameBasedExpressions.matching(referent, property));
+	return new BeanBasedFromWhereBuilder(NameBasedExpressions.matching(referent, property));
     }
 
     // expressions
@@ -89,8 +100,8 @@ public class BeanBasedExpressions extends Expressions {
      * <li>i.e. {@code eq(null)} translates as {@code ?.? IS NULL}.
      * </ul>
      */
-    public static BeanBasedExpressionBuilder eq(Object value) {
-	return new BeanBasedExpressionBuilder(NameBasedExpressions.eq(value));
+    public static BeanBasedFromWhereBuilder eq(Object value) {
+	return new BeanBasedFromWhereBuilder(NameBasedExpressions.eq(value));
     }
 
     /**
@@ -98,8 +109,8 @@ public class BeanBasedExpressions extends Expressions {
      * <p>
      * i.e. {@code like("foo%")} translates as {@code ?.? LIKE 'foo%'}.
      */
-    public static BeanBasedExpressionBuilder like(Object value) {
-	return new BeanBasedExpressionBuilder(NameBasedExpressions.like(value));
+    public static BeanBasedFromWhereBuilder like(Object value) {
+	return new BeanBasedFromWhereBuilder(NameBasedExpressions.like(value));
     }
 
     /**
@@ -107,22 +118,22 @@ public class BeanBasedExpressions extends Expressions {
      * <p>
      * i.e. {@code gt(10)} translates as {@code ?.? > 10}.
      */
-    public static BeanBasedExpressionBuilder gt(Double value) {
-	return new BeanBasedExpressionBuilder(NameBasedExpressions.gt(value));
+    public static BeanBasedFromWhereBuilder gt(Double value) {
+	return new BeanBasedFromWhereBuilder(NameBasedExpressions.gt(value));
     }
 
     /**
      * see {@link #gt(Double)}.
      */
-    public static BeanBasedExpressionBuilder gt(Long value) {
-	return new BeanBasedExpressionBuilder(NameBasedExpressions.gt(value));
+    public static BeanBasedFromWhereBuilder gt(Long value) {
+	return new BeanBasedFromWhereBuilder(NameBasedExpressions.gt(value));
     }
 
     /**
      * see {@link #gt(Double)}.
      */
-    public static BeanBasedExpressionBuilder gt(Integer value) {
-	return new BeanBasedExpressionBuilder(NameBasedExpressions.gt(value));
+    public static BeanBasedFromWhereBuilder gt(Integer value) {
+	return new BeanBasedFromWhereBuilder(NameBasedExpressions.gt(value));
     }
 
     /**
@@ -130,22 +141,22 @@ public class BeanBasedExpressions extends Expressions {
      * <p>
      * i.e. {@code lt(10)} translates as {@code ?.? < 10}.
      */
-    public static BeanBasedExpressionBuilder lt(Double value) {
-	return new BeanBasedExpressionBuilder(NameBasedExpressions.lt(value));
+    public static BeanBasedFromWhereBuilder lt(Double value) {
+	return new BeanBasedFromWhereBuilder(NameBasedExpressions.lt(value));
     }
 
     /**
      * see {@link #lt(Double)}.
      */
-    public static BeanBasedExpressionBuilder lt(Long value) {
-	return new BeanBasedExpressionBuilder(NameBasedExpressions.lt(value));
+    public static BeanBasedFromWhereBuilder lt(Long value) {
+	return new BeanBasedFromWhereBuilder(NameBasedExpressions.lt(value));
     }
 
     /**
      * see {@link #lt(Double)}.
      */
-    public static BeanBasedExpressionBuilder lt(Integer value) {
-	return new BeanBasedExpressionBuilder(NameBasedExpressions.lt(value));
+    public static BeanBasedFromWhereBuilder lt(Integer value) {
+	return new BeanBasedFromWhereBuilder(NameBasedExpressions.lt(value));
     }
 
     /**
@@ -153,8 +164,8 @@ public class BeanBasedExpressions extends Expressions {
      * <p>
      * i.e. {@code in(Arrays.asList("foo", "bar"))} translates as {@code ?.? IN ('foo', 'bar').
      */
-    public static BeanBasedExpressionBuilder in(Collection<?> values) {
-	return new BeanBasedExpressionBuilder(NameBasedExpressions.in(values));
+    public static BeanBasedFromWhereBuilder in(Collection<?> values) {
+	return new BeanBasedFromWhereBuilder(NameBasedExpressions.in(values));
     }
 
     /**
@@ -162,21 +173,21 @@ public class BeanBasedExpressions extends Expressions {
      * <p>
      * i.e. {@code between(1, 3)} translates as {@code ?.? BETWEEN 1 AND 3}.
      */
-    public static BeanBasedExpressionBuilder between(Double v1, Double v2) {
-	return new BeanBasedExpressionBuilder(NameBasedExpressions.between(v1, v2));
+    public static BeanBasedFromWhereBuilder between(Double v1, Double v2) {
+	return new BeanBasedFromWhereBuilder(NameBasedExpressions.between(v1, v2));
     }
 
     /**
      * see {@link #between(Double, Double)}
      */
-    public static BeanBasedExpressionBuilder between(Long v1, Long v2) {
-	return new BeanBasedExpressionBuilder(NameBasedExpressions.between(v1, v2));
+    public static BeanBasedFromWhereBuilder between(Long v1, Long v2) {
+	return new BeanBasedFromWhereBuilder(NameBasedExpressions.between(v1, v2));
     }
 
     /**
      * see {@link #between(Double, Double)}
      */
-    public static BeanBasedExpressionBuilder between(Integer v1, Integer v2) {
-	return new BeanBasedExpressionBuilder(NameBasedExpressions.between(v1, v2));
+    public static BeanBasedFromWhereBuilder between(Integer v1, Integer v2) {
+	return new BeanBasedFromWhereBuilder(NameBasedExpressions.between(v1, v2));
     }
 }

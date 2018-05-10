@@ -27,7 +27,7 @@ import static org.matcher.Expressions.closure;
 
 import java.util.Iterator;
 
-import org.matcher.ExpressionBuilder;
+import org.matcher.FromWhereBuilder;
 import org.matcher.Node;
 import org.matcher.ParameterBinding;
 import org.matcher.expression.BindingExpression;
@@ -37,21 +37,21 @@ import org.matcher.expression.Expression;
  * This class allows creating expressions chaining different operators as defined in the {@link NameBasedExpressions}
  * class.
  * <p>
- * {@link NameBasedExpressionBuilder} are a tree structure which root node is typeless initially and typified later on
+ * {@link NameBasedFromWhereBuilder} are a tree structure which root node is typeless initially and typified later on
  * when {@link #build(Class, ParameterBinding)}.
  * <p>
- * While typifying an {@link NameBasedExpressionBuilder}, all typeless children are identically typified.
+ * While typifying an {@link NameBasedFromWhereBuilder}, all typeless children are identically typified.
  */
-public class NameBasedExpressionBuilder extends ExpressionBuilder<NameBasedExpressionBuilder> {
+public class NameBasedFromWhereBuilder extends FromWhereBuilder<NameBasedFromWhereBuilder> {
 
-    public NameBasedExpressionBuilder(Expression<?, ?> expression) {
+    public NameBasedFromWhereBuilder(Expression<?, ?> expression) {
 	super();
-	super.setData(this);
+	setData(this);
 	expressions.add(expression);
     }
 
     @Override
-    public NameBasedExpressionBuilder getThis() {
+    public NameBasedFromWhereBuilder getThis() {
 	return this;
     }
 
@@ -61,7 +61,7 @@ public class NameBasedExpressionBuilder extends ExpressionBuilder<NameBasedExpre
      * The other builder is typified with {@code property} and also inherits any other types defined in the this
      * builder.
      */
-    public NameBasedExpressionBuilder or(String property, NameBasedExpressionBuilder other) {
+    public NameBasedFromWhereBuilder or(String property, NameBasedFromWhereBuilder other) {
 	return mergeAfterLastExpression(null, property, other.hasChildren() ? closure(other) : other, OR);
     }
 
@@ -70,7 +70,7 @@ public class NameBasedExpressionBuilder extends ExpressionBuilder<NameBasedExpre
      * <p>
      * The other builder is typified with {@code referent} and {@code property}.
      */
-    public NameBasedExpressionBuilder or(Class<?> referent, String property, NameBasedExpressionBuilder other) {
+    public NameBasedFromWhereBuilder or(Class<?> referent, String property, NameBasedFromWhereBuilder other) {
 	return mergeAfterLastExpression(referent, property, other.hasChildren() ? closure(other) : other, OR);
     }
 
@@ -80,7 +80,7 @@ public class NameBasedExpressionBuilder extends ExpressionBuilder<NameBasedExpre
      * The other builder is typified with {@code property} and also inherits any other types defined in the this
      * builder.
      */
-    public NameBasedExpressionBuilder and(String property, NameBasedExpressionBuilder other) {
+    public NameBasedFromWhereBuilder and(String property, NameBasedFromWhereBuilder other) {
 	return mergeAfterLastExpression(null, property, other.hasChildren() ? closure(other) : other, AND);
     }
 
@@ -89,7 +89,7 @@ public class NameBasedExpressionBuilder extends ExpressionBuilder<NameBasedExpre
      * <p>
      * The other builder is typified with {@code referent} and {@code property}.
      */
-    public NameBasedExpressionBuilder and(Class<?> referent, String property, NameBasedExpressionBuilder other) {
+    public NameBasedFromWhereBuilder and(Class<?> referent, String property, NameBasedFromWhereBuilder other) {
 	return mergeAfterLastExpression(referent, property, other.hasChildren() ? closure(other) : other, AND);
     }
 
@@ -114,8 +114,8 @@ public class NameBasedExpressionBuilder extends ExpressionBuilder<NameBasedExpre
 	    }
 	}
 
-	for (Node<NameBasedExpressionBuilder> node : getChildren()) {
-	    final NameBasedExpressionBuilder child = node.getData();
+	for (Node<NameBasedFromWhereBuilder> node : getChildren()) {
+	    final NameBasedFromWhereBuilder child = node.getData();
 	    sb.append(child.toString());
 	}
 	sb.append(" ) ");

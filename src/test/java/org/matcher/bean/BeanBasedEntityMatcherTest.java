@@ -92,9 +92,11 @@ public class BeanBasedEntityMatcherTest {
     @Test
     public void testEqNotNull() {
 	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
-	final List<TestClass> testee = matcher.find(TestClass.class,
-		matching(tc.getBar(), not(eq(null)).and(like("%e%"))));
-	assertThat(testee.size(), is(2));
+	final List<TestClass> testee = matcher.find(TestClass.class, matching(tc.getBar(), not(eq(null))));
+	assertThat(testee.size(), is(3));
+	for (TestClass t : testee) {
+	    assertThat(t.getBar(), is(Matchers.not(nullValue())));
+	}
     }
 
     @Test
@@ -201,13 +203,14 @@ public class BeanBasedEntityMatcherTest {
     @Test
     public void testClosure() {
 	final TestOther to = BeanBasedMatcher.matcher(TestOther.class);
-	final List<TestOther> tos = matcher.find(TestOther.class, matching(to.getBar(), eq("Snake")).and(to.getFoo(), closure(eq(5).or(eq(3)))));
+	final List<TestOther> tos = matcher.find(TestOther.class,
+		matching(to.getBar(), eq("Snake")).and(to.getFoo(), closure(eq(5).or(eq(3)))));
 	for (TestOther t : tos) {
 	    assertThat(t.getBar(), is("Snake"));
 	    assertThat(t.getFoo(), either(is(5)).or(is(3)));
 	}
     }
-    
+
     @Test
     public void testBetween() {
 	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
@@ -233,8 +236,11 @@ public class BeanBasedEntityMatcherTest {
     @Test
     public void testSelectMultipleProperty() {
 	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
-	final Object[] fooAndBar = matcher.findUnique(Object[].class, //
-		selection(tc.getFoo(), tc.getBar()), matching(tc.getFoo(), between(3, 5)).and(tc.getBar(), eq("Hello")));
+	final Object[] fooAndBar = matcher
+		.findUnique(
+			Object[].class, //
+			selection(tc.getFoo(), tc.getBar()),
+			matching(tc.getFoo(), between(3, 5)).and(tc.getBar(), eq("Hello")));
 
 	assertThat(fooAndBar, is(Matchers.not(nullValue())));
 	assertThat((Integer) fooAndBar[0], is(5));

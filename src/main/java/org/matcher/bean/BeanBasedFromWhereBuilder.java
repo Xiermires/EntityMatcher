@@ -3,26 +3,27 @@ package org.matcher.bean;
 import static org.matcher.bean.BeanBasedMatcher.getPropertyName;
 
 import java.util.Deque;
+import java.util.Set;
 
-import org.matcher.ExpressionBuilder;
+import org.matcher.FromWhereBuilder;
 import org.matcher.ParameterBinding;
 import org.matcher.bean.InvokationCapturer.Capture;
 import org.matcher.expression.BindingExpression;
 import org.matcher.expression.Expression;
 import org.matcher.expression.OperatorExpression;
-import org.matcher.name.NameBasedExpressionBuilder;
+import org.matcher.name.NameBasedFromWhereBuilder;
 import org.matcher.operator.Operator;
 
-public class BeanBasedExpressionBuilder extends ExpressionBuilder<BeanBasedExpressionBuilder> {
+public class BeanBasedFromWhereBuilder extends FromWhereBuilder<BeanBasedFromWhereBuilder> {
 
-    private final NameBasedExpressionBuilder delegate;
+    private final NameBasedFromWhereBuilder delegate;
 
-    public BeanBasedExpressionBuilder(NameBasedExpressionBuilder wrapped) {
+    public BeanBasedFromWhereBuilder(NameBasedFromWhereBuilder wrapped) {
 	this.delegate = wrapped;
     }
 
     @Override
-    protected BeanBasedExpressionBuilder getThis() {
+    protected BeanBasedFromWhereBuilder getThis() {
 	return this;
     }
 
@@ -31,21 +32,21 @@ public class BeanBasedExpressionBuilder extends ExpressionBuilder<BeanBasedExpre
 	return delegate.getExpressions();
     }
 
-    public <E> BeanBasedExpressionBuilder or(E property, BeanBasedExpressionBuilder other) {
+    public <E> BeanBasedFromWhereBuilder or(E property, BeanBasedFromWhereBuilder other) {
 	final Capture lastCapture = InvokationCapturer.getLastCapture();
 	delegate.or(getPropertyName(lastCapture), other.delegate);
 	return this;
     }
 
-    public <E> BeanBasedExpressionBuilder and(E property, BeanBasedExpressionBuilder other) {
+    public <E> BeanBasedFromWhereBuilder and(E property, BeanBasedFromWhereBuilder other) {
 	final Capture lastCapture = InvokationCapturer.getLastCapture();
 	delegate.and(getPropertyName(lastCapture), other.delegate);
 	return this;
     }
 
     @Override
-    public String build(ParameterBinding bindings) {
-	return delegate.build(bindings);
+    public String build(Set<Class<?>> seenReferents, ParameterBinding bindings) {
+	return delegate.build(seenReferents, bindings);
     }
 
     @Override
@@ -54,10 +55,10 @@ public class BeanBasedExpressionBuilder extends ExpressionBuilder<BeanBasedExpre
     }
 
     @Override
-    protected BeanBasedExpressionBuilder mergeAfterLastExpression(//
+    protected BeanBasedFromWhereBuilder mergeAfterLastExpression(//
 	    Class<?> referent, //
 	    String property, //
-	    BeanBasedExpressionBuilder other, //
+	    BeanBasedFromWhereBuilder other, //
 	    Operator operator) {
 
 	other.delegate.getExpressions().addFirst(new OperatorExpression(operator));

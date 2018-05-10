@@ -25,7 +25,7 @@ import static org.matcher.BuilderUtils.getColumnName;
 import static org.matcher.BuilderUtils.getTableName;
 import static org.matcher.BuilderUtils.tableColumn;
 import static org.matcher.BuilderUtils.toAlias;
-import static org.matcher.name.NameBasedExpressions.NONE;
+import static org.matcher.Expressions.NONE;
 
 import java.util.Iterator;
 
@@ -35,21 +35,25 @@ import org.matcher.operator.Selector;
 
 import com.google.common.base.Strings;
 
-public class SelectExpression extends NonResolvingExpression<Selector, Object> {
+public class SelectExpression<T> extends NonResolvingExpression<Selector, Object> {
 
-    public SelectExpression(Class<?> referent) {
+    public SelectExpression(Class<T> referent) {
 	super(NONE);
 	setReferent(referent);
     }
 
-    public SelectExpression(Class<?> referent, SelectExpression expression) {
+    public SelectExpression(Class<T> referent, SelectExpression<?> expression) {
 	super(NONE);
 	setReferent(referent);
 	addChild(expression);
     }
 
-    public SelectExpression(SelectExpression expression) {
-	super(NONE);
+    public SelectExpression(SelectExpression<T> expression) {
+	this(NONE, expression);
+    }
+
+    public SelectExpression(Selector operator, SelectExpression<?> expression) {
+	super(operator);
 	setReferent(expression.getReferent());
 	setProperty(expression.getProperty());
 	addChild(expression);
@@ -60,7 +64,7 @@ public class SelectExpression extends NonResolvingExpression<Selector, Object> {
 	setProperty(property);
     }
 
-    public SelectExpression(Selector operator, Class<?> referent, String property) {
+    public SelectExpression(Selector operator, Class<T> referent, String property) {
 	super(operator);
 	setProperty(property);
 	setReferent(referent);
@@ -76,6 +80,13 @@ public class SelectExpression extends NonResolvingExpression<Selector, Object> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
+    // safe
+    public Class<T> getReferent() {
+	return (Class<T>) super.getReferent();
+    }
+
+    @Override
     public String resolve(ParameterBinding unused) {
 	final StringBuilder sb = new StringBuilder();
 	if (hasChildren()) {
@@ -84,13 +95,17 @@ public class SelectExpression extends NonResolvingExpression<Selector, Object> {
 	    sb.append(resolveExpression(first));
 
 	    while (it.hasNext()) {
-		sb.append(", ");
+		sb.append(getResolveSeparator());
 		sb.append(resolveExpression(it.next().getData()));
 	    }
 	    return getOperator().resolve(sb.toString());
 	} else {
 	    return resolveExpression(this);
 	}
+    }
+
+    protected String getResolveSeparator() {
+	return ", ";
     }
 
     private String resolveExpression(Expression<Selector, Object> expression) {

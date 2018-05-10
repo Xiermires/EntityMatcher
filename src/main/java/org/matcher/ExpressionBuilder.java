@@ -6,7 +6,7 @@ import static org.matcher.Expressions.closure;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
 
 import org.matcher.expression.BindingExpression;
@@ -46,66 +46,60 @@ public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends 
     }
 
     /**
-     * Builds the query and updates the parameter bindings.
+     * Builds the expression and updates the parameter bindings.
      */
-    public String build(ParameterBinding bindings) {
-	initializeBindings();
+    public abstract String build(Set<Class<?>> seenReferents, ParameterBinding bindings);
 
-	final StringBuilder fromClause = new StringBuilder();
-	final StringBuilder whereClause = new StringBuilder();
-	final Set<Class<?>> seenReferents = new HashSet<>();
-
-	parseExpressions(whereClause, fromClause, seenReferents, bindings);
-
-	// we assume there is always a next referent, while updating the from clause. Remove the last comma.
-	removeLastComma(fromClause);
-
-	final StringBuilder sb = new StringBuilder().append("FROM ").append(fromClause);
-	if (whereClause.length() > 0) {
-	    sb.append(" ").append("WHERE ").append(whereClause);
-	}
-	return sb.toString();
-    }
-
-    protected void parseExpressions(StringBuilder whereClause, //
-	    StringBuilder fromClause, //
+    protected void parseExpressions(StringBuilder appender, //
+	    StringBuilder fromAppender, //
 	    Set<Class<?>> seenReferents, //
 	    ParameterBinding bindings) {
 
-	for (Expression<?, ?> expression : getExpressions()) {
-	    final String resolveFromClause = expression.resolveFromClause(seenReferents);
-	    if (resolveFromClause != null && !resolveFromClause.isEmpty()) {
-		fromClause.append(resolveFromClause);
-		fromClause.append(", ");
-	    }
+	final Iterator<Expression<?, ?>> it = getExpressions().iterator();
+	if (it.hasNext()) {
+	    Expression<?, ?> expression = it.next();
+	    if (fromAppender != null)
+		fromAppender.append(expression.resolveFromClause(seenReferents));
 
-	    final String resolve = expression.resolve(bindings);
-	    if (resolve != null && !resolve.isEmpty()) {
-		whereClause.append(resolve);
-		whereClause.append(" ");
+	    if (appender != null)
+		appender.append(expression.resolve(bindings));
+
+	    while (it.hasNext()) {
+		expression = it.next();
+
+		if (appender != null) {
+		    final String resolve = expression.resolve(bindings);
+		    if (!resolve.isEmpty()) {
+			appender.append(getResolveSeparator());
+			appender.append(resolve);
+		    }
+		}
+
+		if (fromAppender != null) {
+		    final String resolveFrom = expression.resolveFromClause(seenReferents);
+		    if (!resolveFrom.isEmpty()) {
+			fromAppender.append(getResolveFromSeparator());
+			fromAppender.append(resolveFrom);
+		    }
+		}
 	    }
 	}
 
 	if (hasChildren()) {
 	    for (Node<T> child : getChildren()) {
-		child.getData().parseExpressions(whereClause, fromClause, seenReferents, bindings);
+		child.getData().parseExpressions(appender, fromAppender, seenReferents, bindings);
 	    }
 	}
     }
 
-    private StringBuilder removeLastComma(final StringBuilder sb) {
-	return sb.length() == 0 ? sb : sb.replace(sb.length() - 2, sb.length(), "");
-    }
+    protected abstract String getResolveFromSeparator();
+
+    protected abstract String getResolveSeparator();
 
     public void overwriteNullReferenceAndProperties(Class<?> referent, String property) {
 
 	for (Expression<?, ?> expression : getExpressions()) {
-	    if (expression.getReferent() == null) {
-		expression.setReferent(referent);
-	    }
-	    if (expression.getProperty() == null) {
-		expression.setProperty(property);
-	    }
+	    expression.overwriteNullReferenceAndProperties(referent, property);
 	}
 	getChildren().forEach(node -> node.getData().overwriteNullReferenceAndProperties(referent, property));
     }
@@ -116,7 +110,7 @@ public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends 
 
 	    final Expression<?, ?> bindingExpression = getExpressions().getFirst();
 	    overwriteNullReferenceAndProperties(bindingExpression.getReferent(), bindingExpression.getProperty());
-	} else {
+	} else if (!getExpressions().isEmpty()) {
 	    final Expression<?, ?> bindingExpression = getExpressions().getFirst();
 	    overwriteNullReferenceAndProperties(bindingExpression.getReferent(), bindingExpression.getProperty());
 	}

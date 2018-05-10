@@ -50,7 +50,7 @@ public class QualifierExpression<T> extends Expression<Qualifier<T>, T> {
 	    final String tableName = getTableName(referent);
 	    return tableName + " " + toAlias(tableName);
 	}
-	return null;
+	return "";
     }
 
     @Override

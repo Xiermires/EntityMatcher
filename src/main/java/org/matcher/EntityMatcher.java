@@ -23,8 +23,10 @@ package org.matcher;
 
 import static org.matcher.name.NameBasedExpressions.selection;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.persistence.EntityGraph;
 import javax.persistence.EntityManager;
@@ -41,15 +43,27 @@ import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.CriteriaUpdate;
 import javax.persistence.metamodel.Metamodel;
 
-import org.matcher.expression.SelectExpression;
-import org.matcher.name.NameBasedExpressionBuilder;
+import org.matcher.expression.AggregatorExpression;
+import org.matcher.expression.FromExpression;
+import org.matcher.expression.FunctionExpression;
+import org.matcher.name.NameBasedFromWhereBuilder;
 
 /**
- * An {@link EntityManager} wrapper which allows finding elements using the {@link NameBasedExpressionBuilder} to
- * compose jpql expressions.
+ * An {@link EntityManager} wrapper which allows finding elements using the {@link NameBasedFromWhereBuilder} to compose
+ * jpql expressions.
  */
 @SuppressWarnings("rawtypes")
 public class EntityMatcher implements EntityManager {
+
+    private static <T> ExpressionBuilder fromOnly(Class<T> returnType, Class<?>... others) {
+	final NameBasedFromWhereBuilder expressionBuilder = new NameBasedFromWhereBuilder(
+		new FromExpression(returnType));
+	for (Class<?> other : others)
+	    expressionBuilder.getExpressions().add(new FromExpression(other));
+
+	return expressionBuilder;
+    }
+
     private final EntityManager delegate;
 
     public EntityMatcher(EntityManager delegate) {
@@ -57,24 +71,78 @@ public class EntityMatcher implements EntityManager {
     }
 
     /**
+     * Returns a single element's selectBuilder defined properties matching the jpql expression.
+     * <p>
+     * Equivalent to call {@link Query#getSingleResult()} on the built query.
+     */
+    public <T> T findUnique(Class<T> returnType, FunctionExpression<?> functionExpression) {
+	return createTypedQuery(//
+		returnType, //
+		selection(functionExpression), //
+		fromOnly(functionExpression.getReferent()), //
+		null).getSingleResult();
+    }
+
+    /**
+     * Returns a single element's selectBuilder defined properties matching the jpql expression.
+     * <p>
+     * Equivalent to call {@link Query#getSingleResult()} on the built query.
+     */
+    public <T> T findUnique(Class<T> returnType, SelectBuilder<?> selectBuilder) {
+	return createTypedQuery(//
+		returnType, //
+		selectBuilder, //
+		fromOnly(selectBuilder.getReferent()), //
+		null).getSingleResult();
+    }
+
+    /**
+     * Returns a single element's selectBuilder defined properties matching the jpql expression.
+     * <p>
+     * Equivalent to call {@link Query#getSingleResult()} on the built query.
+     */
+    public <T> T findUnique(Class<T> returnType, AggregatorExpression<?> aggregatorExpression) {
+	aggregatorExpression.setReferent(returnType);
+	return createTypedQuery(returnType, //
+		selection(returnType), //
+		fromOnly(returnType), //
+		aggregatorExpression).getSingleResult();
+    }
+
+    /**
      * Returns a single element of type {@code clazz} matching the jpql expression.
      * <p>
      * Equivalent to call {@link Query#getSingleResult()} on the built query.
      */
-    public <T, E extends ExpressionBuilder<E>> T findUnique(Class<T> clazz, E builder) {
-	return createTypedQuery(clazz, selection(clazz), builder).getSingleResult();
+    public <T> T findUnique(Class<T> clazz, ExpressionBuilder<?> whereBuilder) {
+	return createTypedQuery(clazz, selection(clazz), whereBuilder, null).getSingleResult();
     }
 
     /**
-     * Returns a single element's selectExpression defined properties matching the jpql expression.
+     * Returns a single element's selectBuilder defined properties matching the jpql expression.
      * <p>
      * Equivalent to call {@link Query#getSingleResult()} on the built query.
      */
-    public <T, E extends ExpressionBuilder<E>> T findUnique( //
-	    Class<T> returnType, //
-	    SelectExpression selectExpression, //
-	    E whereBuilder) {
-	return createTypedQuery(returnType, selectExpression, whereBuilder).getSingleResult();
+    public <T> T findUnique(Class<T> returnType, FunctionExpression<?> functionExpression, ExpressionBuilder<?> whereBuilder) {
+	return createTypedQuery(returnType, selection(functionExpression), whereBuilder, null).getSingleResult();
+    }
+
+    /**
+     * Returns a single element's selectBuilder defined properties matching the jpql expression.
+     * <p>
+     * Equivalent to call {@link Query#getSingleResult()} on the built query.
+     */
+    public <T> T findUnique(Class<T> returnType, SelectBuilder<?> selectBuilder, ExpressionBuilder<?> whereBuilder) {
+	return createTypedQuery(returnType, selectBuilder, whereBuilder, null).getSingleResult();
+    }
+
+    /**
+     * Returns a collection of all elements of type {@code clazz}.
+     * <p>
+     * Equivalent to call {@link Query#getResultList()} on the built query.
+     */
+    public <T> List<T> find(Class<T> clazz) {
+	return createTypedQuery(clazz, selection(clazz), fromOnly(clazz), null).getResultList();
     }
 
     /**
@@ -82,38 +150,99 @@ public class EntityMatcher implements EntityManager {
      * <p>
      * Equivalent to call {@link Query#getResultList()} on the built query.
      */
-    public <T, E extends ExpressionBuilder<E>> List<T> find(Class<T> clazz, E builder) {
-	return createTypedQuery(clazz, selection(clazz), builder).getResultList();
+    public <T> List<T> find(Class<T> returnType, FunctionExpression<?> functionExpression) {
+	return createTypedQuery(//
+		returnType, //
+		selection(functionExpression), //
+		fromOnly(functionExpression.getReferent()), //
+		null).getResultList();
     }
-
+    
     /**
-     * Returns a single element's selectExpression defined properties matching the jpql expression.
+     * Returns a collection of elements of type {@code clazz} matching the jpql expression.
      * <p>
      * Equivalent to call {@link Query#getResultList()} on the built query.
      */
-    public <T, E extends ExpressionBuilder<E>> List<T> find( //
-	    Class<T> returnType, //
-	    SelectExpression selectExpression, //
-	    E whereBuilder) {
-	return createTypedQuery(returnType, selectExpression, whereBuilder).getResultList();
+    public <T> List<T> find(Class<T> returnType, SelectBuilder<?> selectBuilder) {
+	return createTypedQuery(//
+		returnType, //
+		selectBuilder, //
+		fromOnly(selectBuilder.getReferent()), //
+		null).getResultList();
+    }
+    
+    /**
+     * Returns a collection of elements of type {@code clazz} matching the jpql expression.
+     * <p>
+     * Equivalent to call {@link Query#getResultList()} on the built query.
+     */
+    public <T> List<T> find(Class<T> returnType, FunctionExpression<?> functionExpression,
+	    AggregatorExpression<?> aggregateExpression) {
+	aggregateExpression.setReferent(functionExpression.getReferent());
+	return createTypedQuery(//
+		returnType, //
+		selection(functionExpression), //
+		fromOnly(functionExpression.getReferent()), //
+		aggregateExpression).getResultList();
     }
 
-    private <T, E extends ExpressionBuilder<E>> TypedQuery<T> createTypedQuery( //
+    /**
+     * Returns a collection of elements of type {@code clazz} matching the jpql expression.
+     * <p>
+     * Equivalent to call {@link Query#getResultList()} on the built query.
+     */
+    public <T> List<T> find(Class<T> returnType, SelectBuilder<?> selectBuilder,
+	    AggregatorExpression<?> aggregateExpression) {
+	aggregateExpression.setReferent(selectBuilder.getReferent());
+	return createTypedQuery(//
+		returnType, //
+		selectBuilder, //
+		fromOnly(selectBuilder.getReferent()), //
+		aggregateExpression).getResultList();
+    }
+
+    /**
+     * Returns a collection of elements of type {@code clazz} matching the jpql expression.
+     * <p>
+     * Equivalent to call {@link Query#getResultList()} on the built query.
+     */
+    public <T> List<T> find(Class<T> clazz, ExpressionBuilder<?> whereBuilder) {
+	return createTypedQuery(clazz, selection(clazz), whereBuilder, null).getResultList();
+    }
+
+    /**
+     * Returns a collection of elements of type {@code clazz} matching the jpql expression.
+     * <p>
+     * Equivalent to call {@link Query#getResultList()} on the built query.
+     */
+    public <T> List<T> find(Class<T> returnType, SelectBuilder<?> selectBuilder, ExpressionBuilder<?> whereBuilder) {
+	return createTypedQuery(returnType, selectBuilder, whereBuilder, null).getResultList();
+    }
+
+    private <T> TypedQuery<T> createTypedQuery( //
 	    Class<T> returnType, //
-	    SelectExpression selector, //
-	    E builder) {
+	    SelectBuilder<?> selectBuilder, //
+	    ExpressionBuilder<?> whereBuilder, //
+	    AggregatorExpression<?> aggregateExpression) {
 
-	builder.overwriteNullReferenceAndProperties(selector.getReferent(), null);
-	selector.overwriteNullReferenceAndProperties(selector.getReferent(), null);
+	selectBuilder.overwriteNullReferenceAndProperties(selectBuilder.getReferent(), null);
+	whereBuilder.overwriteNullReferenceAndProperties(selectBuilder.getReferent(), null);
+	if (aggregateExpression != null) {
+	    aggregateExpression.overwriteNullReferenceAndProperties(selectBuilder.getReferent(), null);
+	}
 
+	final Set<Class<?>> seenReferents = new HashSet<>();
 	final ParameterBinding bindings = new ParameterBindingImpl();
 	final StringBuilder queryBuilder = new StringBuilder();
-	queryBuilder.append("SELECT ");
-	queryBuilder.append(selector.resolve(bindings));
+	queryBuilder.append(selectBuilder.build(seenReferents, bindings));
 	queryBuilder.append(" ");
-	queryBuilder.append(builder.build(bindings));
-	final String queryTxt = queryBuilder.toString().replaceAll("\\s+", " ").trim();
+	queryBuilder.append(whereBuilder.build(seenReferents, bindings));
+	if (aggregateExpression != null) {
+	    queryBuilder.append(" ");
+	    queryBuilder.append(aggregateExpression.resolve(bindings));
+	}
 
+	final String queryTxt = queryBuilder.toString().replaceAll("\\s+", " ").trim();
 	final TypedQuery<T> query = delegate.createQuery(queryTxt, returnType);
 	bindings.resolveParams(queryTxt, query);
 	return query;

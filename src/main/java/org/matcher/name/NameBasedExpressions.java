@@ -25,7 +25,9 @@ import java.util.Collection;
 
 import org.matcher.ExpressionBuilder;
 import org.matcher.Expressions;
+import org.matcher.expression.AggregatorExpression;
 import org.matcher.expression.Expression;
+import org.matcher.expression.FunctionExpression;
 import org.matcher.expression.JoinQualifierExpression;
 import org.matcher.expression.QualifierExpression;
 import org.matcher.expression.SelectExpression;
@@ -34,60 +36,162 @@ import com.google.common.collect.Lists;
 
 public class NameBasedExpressions extends Expressions {
 
-    // select / functions
-    
-    public static SelectExpression selection(Class<?> referent, String... properties) {
-	final SelectExpression expression = new SelectExpression(referent);
+    // select / functions / aggregators
+
+    public static <T> NameBasedSelectBuilder<T> selection(String... properties) {
+	if (properties.length == 0)
+	    return new NameBasedSelectBuilder<T>(new SelectExpression<>(NONE));
+
+	final NameBasedSelectBuilder<T> builder = new NameBasedSelectBuilder<T>(new SelectExpression<>(PROPERTY,
+		properties[0]));
+	for (int i = 1; i < properties.length; i++) {
+	    builder.getExpressions().add(new SelectExpression<>(PROPERTY, properties[i]));
+	}
+	return builder;
+    }
+
+    public static <T> NameBasedSelectBuilder<T> selection(Class<T> referent, String... properties) {
+	if (properties.length == 0)
+	    return new NameBasedSelectBuilder<T>(new SelectExpression<>(referent));
+
+	final NameBasedSelectBuilder<T> builder = new NameBasedSelectBuilder<T>(new SelectExpression<>(PROPERTY,
+		referent, properties[0]));
+	for (int i = 1; i < properties.length; i++) {
+	    builder.getExpressions().add(new SelectExpression<>(PROPERTY, referent, properties[i]));
+	}
+	return builder;
+    }
+
+    public static <T> NameBasedSelectBuilder<T> selection(FunctionExpression<T> f1) {
+	return new NameBasedSelectBuilder<>(new FunctionExpression<>(NONE, f1));
+    }
+
+    public static <T> NameBasedSelectBuilder<T> selection(FunctionExpression<T> f1, FunctionExpression<T> f2) {
+	final FunctionExpression<T> expression = new FunctionExpression<>(NONE);
+	expression.addChild(f1);
+	expression.addChild(f2);
+	return new NameBasedSelectBuilder<>(expression);
+    }
+
+    public static <T> NameBasedSelectBuilder<T> selection(//
+	    FunctionExpression<T> f1, //
+	    FunctionExpression<T> f2, //
+	    FunctionExpression<T> f3) {
+
+	final FunctionExpression<T> expression = new FunctionExpression<>(NONE);
+	expression.addChild(f1);
+	expression.addChild(f2);
+	expression.addChild(f3);
+	return new NameBasedSelectBuilder<>(expression);
+    }
+
+    @SafeVarargs
+    public static NameBasedSelectBuilder<?> selection(//
+	    FunctionExpression<?> f1, //
+	    FunctionExpression<?> f2, //
+	    FunctionExpression<?> f3, //
+	    FunctionExpression<?> f4, //
+	    FunctionExpression<?>... others) {
+
+	final FunctionExpression<?> expression = new FunctionExpression<>(NONE);
+	expression.addChild(f1);
+	expression.addChild(f2);
+	expression.addChild(f3);
+	expression.addChild(f4);
+	for (FunctionExpression<?> function : others) {
+	    expression.addChild(function);
+	}
+	return new NameBasedSelectBuilder<>(expression);
+    }
+
+    public static NameBasedSelectBuilder<?> selection(Class<?> referent, FunctionExpression<?> functionExpression) {
+	return new NameBasedSelectBuilder<>(new FunctionExpression<>(referent, functionExpression));
+    }
+
+    public static FunctionExpression<?> min(String property) {
+	return new FunctionExpression<>(MIN, property);
+    }
+
+    public static <T> FunctionExpression<T> min(Class<T> referent, String property) {
+	return new FunctionExpression<>(MIN, referent, property);
+    }
+
+    public static FunctionExpression<?> max(String property) {
+	return new FunctionExpression<>(MAX, property);
+    }
+
+    public static <T> FunctionExpression<T> max(Class<T> referent, String property) {
+	return new FunctionExpression<>(MAX, referent, property);
+    }
+
+    public static FunctionExpression<?> avg(String property) {
+	return new FunctionExpression<>(AVG, property);
+    }
+
+    public static <T> FunctionExpression<T> avg(Class<T> referent, String property) {
+	return new FunctionExpression<>(AVG, referent, property);
+    }
+
+    public static FunctionExpression<?> sum(String property) {
+	return new FunctionExpression<>(SUM, property);
+    }
+
+    public static <T> FunctionExpression<T> sum(Class<T> referent, String property) {
+	return new FunctionExpression<>(SUM, referent, property);
+    }
+
+    public static FunctionExpression<?> count(String property) {
+	return new FunctionExpression<>(COUNT, property);
+    }
+
+    public static <T> FunctionExpression<T> count(Class<T> referent, String property) {
+	return new FunctionExpression<>(COUNT, referent, property);
+    }
+
+    public static FunctionExpression<?> count(FunctionExpression<?> other) {
+	final FunctionExpression<?> count = new FunctionExpression<>(COUNT);
+	count.addChild(other);
+	count.setReferent(other.getReferent());
+	count.setProperty(other.getProperty());
+	return count;
+    }
+
+    public static FunctionExpression<?> distinct(String property) {
+	return new FunctionExpression<>(DISTINCT, property);
+    }
+
+    public static <T> FunctionExpression<T> distinct(Class<T> referent, String property) {
+	return new FunctionExpression<>(DISTINCT, referent, property);
+    }
+
+    // group by
+
+    /**
+     * A group by expression, where each property belongs to the leading query referent.
+     * <p>
+     * i.e. {@code groupBy("foo", "bar")} translates as {@code GROUP BY ?.foo, ?.bar}.
+     */
+    public static AggregatorExpression<?> groupBy(String... properties) {
+	final AggregatorExpression<?> expression = new AggregatorExpression<>(GROUPBY);
 	for (String property : properties) {
-	    expression.addChild(new SelectExpression(PROPERTY(), referent, property));
+	    expression.addChild(new SelectExpression<>(PROPERTY, property));
 	}
 	return expression;
     }
 
-    public static SelectExpression selection(Class<?> referent, SelectExpression other) {
-	return new SelectExpression(referent, other);
+    /**
+     * A group by expression, where each property belongs to the leading query referent.
+     * <p>
+     * i.e. {@code groupBy("foo", "bar")} translates as {@code GROUP BY ?.foo, ?.bar}.
+     */
+    public static AggregatorExpression<?> groupBy(FunctionExpression<?> function) {
+	final AggregatorExpression<?> expression = new AggregatorExpression<>(GROUPBY);
+	expression.setReferent(function.getReferent());
+	expression.setProperty(function.getProperty());
+	expression.addChild(function);
+	return expression;
     }
 
-    public static SelectExpression min(String property) {
-	return new SelectExpression(MIN(), property);
-    }
-    
-    public static SelectExpression min(Class<?> referent, String property) {
-	return new SelectExpression(MIN(), referent, property);
-    }
-
-    public static SelectExpression max(String property) {
-	return new SelectExpression(MAX(), property);
-    }
-    
-    public static SelectExpression max(Class<?> referent, String property) {
-	return new SelectExpression(MAX(), referent, property);
-    }
-
-    public static SelectExpression count(String property) {
-	return new SelectExpression(COUNT(), property);
-    }
-    
-    public static SelectExpression count(Class<?> referent, String property) {
-	return new SelectExpression(COUNT(), referent, property);
-    }
-
-    public static SelectExpression count(SelectExpression otherExpression) {
-	final SelectExpression count = new SelectExpression(COUNT());
-	count.addChild(otherExpression);
-	count.setReferent(otherExpression.getReferent());
-	count.setProperty(otherExpression.getProperty());
-	return count;
-    }
-
-    public static SelectExpression distinct(String property) {
-	return new SelectExpression(DISTINCT(), property);
-    }
-
-    public static SelectExpression distinct(Class<?> referent, String property) {
-	return new SelectExpression(DISTINCT(), referent, property);
-    }
-    
     // matchers
 
     /**
@@ -95,9 +199,9 @@ public class NameBasedExpressions extends Expressions {
      * <p>
      * Equivalent to ?.? = other.property
      */
-    public static NameBasedExpressionBuilder matching(Class<?> other, String otherProperty) {
+    public static NameBasedFromWhereBuilder matching(Class<?> other, String otherProperty) {
 	final Expression<?, ?> expression = new JoinQualifierExpression(EQ(String.class), other, otherProperty);
-	final NameBasedExpressionBuilder builder = new NameBasedExpressionBuilder(expression);
+	final NameBasedFromWhereBuilder builder = new NameBasedFromWhereBuilder(expression);
 	return matching(null, otherProperty, builder);
     }
 
@@ -125,8 +229,8 @@ public class NameBasedExpressions extends Expressions {
      * <li>i.e. {@code eq(null)} translates as {@code ?.? IS NULL}.
      * </ul>
      */
-    public static NameBasedExpressionBuilder eq(Object value) {
-	return new NameBasedExpressionBuilder(new QualifierExpression<Object>(EQ(Object.class), value));
+    public static NameBasedFromWhereBuilder eq(Object value) {
+	return new NameBasedFromWhereBuilder(new QualifierExpression<Object>(EQ(Object.class), value));
     }
 
     /**
@@ -134,8 +238,8 @@ public class NameBasedExpressions extends Expressions {
      * <p>
      * i.e. {@code like("foo%")} translates as {@code ?.? LIKE 'foo%'}.
      */
-    public static NameBasedExpressionBuilder like(Object value) {
-	return new NameBasedExpressionBuilder(new QualifierExpression<Object>(LIKE(Object.class), value));
+    public static NameBasedFromWhereBuilder like(Object value) {
+	return new NameBasedFromWhereBuilder(new QualifierExpression<Object>(LIKE(Object.class), value));
     }
 
     /**
@@ -143,22 +247,22 @@ public class NameBasedExpressions extends Expressions {
      * <p>
      * i.e. {@code gt(10)} translates as {@code ?.? > 10}.
      */
-    public static NameBasedExpressionBuilder gt(Double value) {
-	return new NameBasedExpressionBuilder(new QualifierExpression<Double>(GT(Double.class), value));
+    public static NameBasedFromWhereBuilder gt(Double value) {
+	return new NameBasedFromWhereBuilder(new QualifierExpression<Double>(GT(Double.class), value));
     }
 
     /**
      * see {@link #gt(Double)}.
      */
-    public static NameBasedExpressionBuilder gt(Long value) {
-	return new NameBasedExpressionBuilder(new QualifierExpression<Long>(GT(Long.class), value));
+    public static NameBasedFromWhereBuilder gt(Long value) {
+	return new NameBasedFromWhereBuilder(new QualifierExpression<Long>(GT(Long.class), value));
     }
 
     /**
      * see {@link #gt(Double)}.
      */
-    public static NameBasedExpressionBuilder gt(Integer value) {
-	return new NameBasedExpressionBuilder(new QualifierExpression<Integer>(GT(Integer.class), value));
+    public static NameBasedFromWhereBuilder gt(Integer value) {
+	return new NameBasedFromWhereBuilder(new QualifierExpression<Integer>(GT(Integer.class), value));
     }
 
     /**
@@ -166,22 +270,22 @@ public class NameBasedExpressions extends Expressions {
      * <p>
      * i.e. {@code lt(10)} translates as {@code ?.? < 10}.
      */
-    public static NameBasedExpressionBuilder lt(Double value) {
-	return new NameBasedExpressionBuilder(new QualifierExpression<Double>(LT(Double.class), value));
+    public static NameBasedFromWhereBuilder lt(Double value) {
+	return new NameBasedFromWhereBuilder(new QualifierExpression<Double>(LT(Double.class), value));
     }
 
     /**
      * see {@link #lt(Double)}.
      */
-    public static NameBasedExpressionBuilder lt(Long value) {
-	return new NameBasedExpressionBuilder(new QualifierExpression<Long>(LT(Long.class), value));
+    public static NameBasedFromWhereBuilder lt(Long value) {
+	return new NameBasedFromWhereBuilder(new QualifierExpression<Long>(LT(Long.class), value));
     }
 
     /**
      * see {@link #lt(Double)}.
      */
-    public static NameBasedExpressionBuilder lt(Integer value) {
-	return new NameBasedExpressionBuilder(new QualifierExpression<Integer>(LT(Integer.class), value));
+    public static NameBasedFromWhereBuilder lt(Integer value) {
+	return new NameBasedFromWhereBuilder(new QualifierExpression<Integer>(LT(Integer.class), value));
     }
 
     /**
@@ -189,9 +293,9 @@ public class NameBasedExpressions extends Expressions {
      * <p>
      * i.e. {@code in(Arrays.asList("foo", "bar"))} translates as {@code ?.? IN ('foo', 'bar').
      */
-    public static NameBasedExpressionBuilder in(Collection<?> values) {
+    public static NameBasedFromWhereBuilder in(Collection<?> values) {
 	final Collection<?> newArrayList = Lists.newArrayList(values);
-	return new NameBasedExpressionBuilder(new QualifierExpression<Collection<?>>(IN(), newArrayList));
+	return new NameBasedFromWhereBuilder(new QualifierExpression<Collection<?>>(IN(), newArrayList));
     }
 
     /**
@@ -199,21 +303,22 @@ public class NameBasedExpressions extends Expressions {
      * <p>
      * i.e. {@code between(1, 3)} translates as {@code ?.? BETWEEN 1 AND 3}.
      */
-    public static NameBasedExpressionBuilder between(Double v1, Double v2) {
-	return new NameBasedExpressionBuilder(new QualifierExpression<Boundaries>(BETWEEN(), new Boundaries(v1, v2)));
+    public static NameBasedFromWhereBuilder between(Double v1, Double v2) {
+	return new NameBasedFromWhereBuilder(new QualifierExpression<Boundaries>(BETWEEN(), new Boundaries(v1, v2)));
     }
 
     /**
      * see {@link #between(Double, Double)}
      */
-    public static NameBasedExpressionBuilder between(Long v1, Long v2) {
-	return new NameBasedExpressionBuilder(new QualifierExpression<Boundaries>(BETWEEN(), new Boundaries(v1, v2)));
+    public static NameBasedFromWhereBuilder between(Long v1, Long v2) {
+	return new NameBasedFromWhereBuilder(new QualifierExpression<Boundaries>(BETWEEN(), new Boundaries(v1, v2)));
     }
 
     /**
      * see {@link #between(Double, Double)}
      */
-    public static NameBasedExpressionBuilder between(Integer v1, Integer v2) {
-	return new NameBasedExpressionBuilder(new QualifierExpression<Boundaries>(BETWEEN(), new Boundaries(v1, v2)));
+    public static NameBasedFromWhereBuilder between(Integer v1, Integer v2) {
+	return new NameBasedFromWhereBuilder(new QualifierExpression<Boundaries>(BETWEEN(), new Boundaries(v1, v2)));
     }
+
 }

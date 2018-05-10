@@ -27,9 +27,9 @@ import org.matcher.Arborescence;
 import org.matcher.ParameterBinding;
 import org.matcher.operator.Operator;
 
-public abstract class Expression<T extends Operator, E> extends Arborescence<Expression<T, E>> {
+public abstract class Expression<T extends Operator, V> extends Arborescence<Expression<T, V>> {
 
-    private final E value;
+    private final V value;
     private T operator;
 
     private Class<?> referent;
@@ -39,13 +39,19 @@ public abstract class Expression<T extends Operator, E> extends Arborescence<Exp
 	this(operator, null);
     }
 
-    public Expression(T operator, E value) {
+    public Expression(T operator, V value) {
 	this.operator = operator;
 	this.value = value;
     }
 
+    /**
+     * Resolves to a from expression or to an empty string if it can't be resolved.
+     */
     public abstract String resolveFromClause(Set<Class<?>> seenReferents);
 
+    /**
+     * Resolves to an expression or to an empty string if it can't be resolved.
+     */
     public abstract String resolve(ParameterBinding bindings);
 
     public T getOperator() {
@@ -68,7 +74,7 @@ public abstract class Expression<T extends Operator, E> extends Arborescence<Exp
 	return property;
     }
 
-    public E getValue() {
+    public V getValue() {
 	return value;
     }
 

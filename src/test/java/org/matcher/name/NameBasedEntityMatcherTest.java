@@ -21,6 +21,7 @@
  *******************************************************************************/
 package org.matcher.name;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.either;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -32,10 +33,12 @@ import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertThat;
 import static org.matcher.Expressions.closure;
 import static org.matcher.Expressions.not;
+import static org.matcher.name.NameBasedExpressions.avg;
 import static org.matcher.name.NameBasedExpressions.between;
 import static org.matcher.name.NameBasedExpressions.count;
 import static org.matcher.name.NameBasedExpressions.distinct;
 import static org.matcher.name.NameBasedExpressions.eq;
+import static org.matcher.name.NameBasedExpressions.groupBy;
 import static org.matcher.name.NameBasedExpressions.gt;
 import static org.matcher.name.NameBasedExpressions.in;
 import static org.matcher.name.NameBasedExpressions.like;
@@ -44,8 +47,10 @@ import static org.matcher.name.NameBasedExpressions.matching;
 import static org.matcher.name.NameBasedExpressions.max;
 import static org.matcher.name.NameBasedExpressions.min;
 import static org.matcher.name.NameBasedExpressions.selection;
+import static org.matcher.name.NameBasedExpressions.sum;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 
 import javax.persistence.EntityManager;
@@ -110,8 +115,11 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testEqNotNull() {
-	final List<TestClass> testee = matcher.find(TestClass.class, matching("bar", not(eq(null)).and(like("%e%"))));
-	assertThat(testee.size(), is(2));
+	final List<TestClass> testee = matcher.find(TestClass.class, matching("bar", not(eq(null))));
+	assertThat(testee.size(), is(3));
+	for (TestClass t : testee) {
+	    assertThat(t.getBar(), is(Matchers.not(nullValue())));
+	}
     }
 
     @Test
@@ -200,10 +208,11 @@ public class NameBasedEntityMatcherTest {
 	for (TestClass tc : tcs)
 	    assertThat(bars.contains(tc.getBar()), is(true));
     }
-    
+
     @Test
     public void testClosure() {
-	final List<TestOther> tos = matcher.find(TestOther.class, matching("bar", eq("Snake")).and("foo", closure(eq(5).or(eq(3)))));
+	final List<TestOther> tos = matcher.find(TestOther.class,
+		matching("bar", eq("Snake")).and("foo", closure(eq(5).or(eq(3)))));
 	for (TestOther to : tos) {
 	    assertThat(to.getBar(), is("Snake"));
 	    assertThat(to.getFoo(), either(is(5)).or(is(3)));
@@ -257,6 +266,20 @@ public class NameBasedEntityMatcherTest {
     }
 
     @Test
+    public void testAvg() {
+	final Double avg = matcher.findUnique(Double.class, avg(TestClass.class, "foo"));
+	assertThat(avg, is(Matchers.not(nullValue())));
+	assertThat(avg, is(4d));
+    }
+
+    @Test
+    public void testSum() {
+	final Long sum = matcher.findUnique(Long.class, sum(TestClass.class, "foo"));
+	assertThat(sum, is(Matchers.not(nullValue())));
+	assertThat(sum, is(16l));
+    }
+
+    @Test
     public void testCount() {
 	final Long count = matcher
 		.findUnique(Long.class, count(TestClass.class, "foo"), matching("foo", between(3, 5)));
@@ -273,6 +296,13 @@ public class NameBasedEntityMatcherTest {
     }
 
     @Test
+    public void testDistinctList() {
+	final List<String> bars = matcher.find(String.class, distinct(TestOther.class, "bar"));
+	assertThat(bars.size(), is(2));
+	assertThat(bars, containsInAnyOrder("Snake", "Hello"));
+    }
+
+    @Test
     public void testCountDistinct() {
 	final Long count = matcher.findUnique(Long.class, //
 		count(distinct(TestOther.class, "bar")), matching("bar", eq("Snake")));
@@ -280,15 +310,23 @@ public class NameBasedEntityMatcherTest {
     }
 
     @Test
+    public void testGroupBy() {
+	final List<Object[]> tos = matcher.find(Object[].class, selection(TestOther.class, "bar").and(count("bar")),
+		groupBy("bar"));
+	assertThat(tos.size(), is(2));
+    }
+
+    @Test
     public void tryMatchingSignatures() {
-	NameBasedExpressionBuilder builder = matching("bar", like("Hell%")).//
+	NameBasedFromWhereBuilder builder = matching("bar", like("Hell%")).//
 		and(TestOther.class, "bar", like("Hell%").or(like("Bye"))).//
 		or("foo", gt(5).//
 			and(matching(TestOther.class, "bar")));
 
 	builder.overwriteNullReferenceAndProperties(TestClass.class, null);
-	final String queryTxt = builder.build(new ParameterBindingImpl());
+	final String queryTxt = builder.build(new HashSet<>(), new ParameterBindingImpl());
 
 	System.out.println(queryTxt);
+
     }
 }

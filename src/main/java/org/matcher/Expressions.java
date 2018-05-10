@@ -5,6 +5,7 @@ import java.util.Collection;
 import org.matcher.expression.Expression;
 import org.matcher.expression.OperatorExpression;
 import org.matcher.expression.SelectExpression;
+import org.matcher.name.NameBasedSelectBuilder;
 import org.matcher.operator.Functor;
 import org.matcher.operator.Joiner;
 import org.matcher.operator.Negatable;
@@ -20,46 +21,42 @@ public class Expressions {
     public static final Operator OPEN = new Operator(" ( ");
     public static final Operator CLOSE = new Operator(" ) ");
 
-    // select / functions
-    
-    public static final Selector PROPERTY() {
-	return new Selector() {
-	    @Override
-	    public String resolve(String string) {
-		return string;
-	    }
-	};
-    }
+    // select / functions / aggregation
 
-    public static final Functor MIN() {
-	return new Functor("MIN");
-    }
+    public static final Selector PROPERTY = new Selector() {
+	@Override
+	public String resolve(String string) {
+	    return string;
+	}
+    };
 
-    public static final Functor MAX() {
-	return new Functor("MAX");
-    }
+    public static final Selector GROUPBY = new Selector() {
+	@Override
+	public String resolve(String string) {
+	    return "GROUP BY " + string;
+	}
+    };
 
-    public static final Functor COUNT() {
-	return new Functor("COUNT");
-    }
+    public static final Selector DISTINCT = new Selector() {
+	@Override
+	public String resolve(String tableColumn) {
+	    return "DISTINCT " + tableColumn;
+	}
+    };
 
-    public static final Selector DISTINCT() {
-	return new Selector() {
-	    @Override
-	    public String resolve(String tableColumn) {
-		return "DISTINCT " + tableColumn;
-	    }
-	};
-    }
-    
-    public static SelectExpression count(SelectExpression otherExpression) {
-	final SelectExpression count = new SelectExpression(COUNT());
-	count.addChild(otherExpression);
+    public static final Functor MIN = new Functor("MIN");
+    public static final Functor MAX = new Functor("MAX");
+    public static final Functor AVG = new Functor("AVG");
+    public static final Functor SUM = new Functor("SUM");
+    public static final Functor COUNT = new Functor("COUNT");
+
+    public static SelectBuilder<?> count(SelectBuilder<?> otherExpression) {
+	final SelectExpression<?> count = new SelectExpression<>(COUNT);
 	count.setReferent(otherExpression.getReferent());
 	count.setProperty(otherExpression.getProperty());
-	return count;
+	return new NameBasedSelectBuilder<>(count);
     }
-    
+
     // wrappers
 
     /**
@@ -142,7 +139,7 @@ public class Expressions {
 	    this.min = min;
 	    this.max = max;
 	}
-	
+
 	@Override
 	public String toString() {
 	    return "( " + min + ", " + max + " )";
