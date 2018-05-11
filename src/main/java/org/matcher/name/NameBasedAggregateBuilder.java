@@ -7,21 +7,11 @@ public class NameBasedAggregateBuilder<T> extends AggregateBuilder<T, NameBasedA
 
     public NameBasedAggregateBuilder(FunctionExpression<T> expression) {
 	super(expression);
+	setData(this);
     }
     
     @Override
     protected NameBasedAggregateBuilder<T> getThis() {
 	return this;
     }
-
-//    public NameBasedAggregateBuilder<?> and(String first, String... others) {
-//	addChild(selection(first, others));
-//	return this;
-//    }
-//
-//    public NameBasedAggregateBuilder<T> orderBy(FunctionExpression<?> first, FunctionExpression<?>... others) {
-//	getExpressions().add(new OperatorExpression(ORDERBY));
-//	getExpressions().addAll(NameBasedExpressions.orderBy(first, others).getExpressions());
-//	return this;
-//    }
 }

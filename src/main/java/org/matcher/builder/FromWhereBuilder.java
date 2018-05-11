@@ -1,7 +1,11 @@
 package org.matcher.builder;
 
+import static org.matcher.expression.Expressions.AND;
+import static org.matcher.expression.Expressions.OR;
+
 import java.util.Set;
 
+import org.matcher.operator.Operator;
 import org.matcher.parameter.ParameterBinding;
 
 public abstract class FromWhereBuilder<T extends ExpressionBuilder<T>> extends ExpressionBuilder<T> {
@@ -30,5 +34,15 @@ public abstract class FromWhereBuilder<T extends ExpressionBuilder<T>> extends E
     @Override
     protected String getResolveSeparator() {
 	return " ";
+    }
+
+    @Override
+    protected Operator getOrOperator() {
+	return OR;
+    }
+
+    @Override
+    protected Operator getAndOperator() {
+	return AND;
     }
 }

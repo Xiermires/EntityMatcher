@@ -28,10 +28,10 @@ import static org.matcher.expression.Expressions.closure;
 import java.util.Iterator;
 
 import org.matcher.builder.FromWhereBuilder;
-import org.matcher.util.Node;
-import org.matcher.parameter.ParameterBinding;
 import org.matcher.expression.BindingExpression;
 import org.matcher.expression.Expression;
+import org.matcher.parameter.ParameterBinding;
+import org.matcher.util.Node;
 
 /**
  * This class allows creating expressions chaining different operators as defined in the {@link NameBasedExpressions}

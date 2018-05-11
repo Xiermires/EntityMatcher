@@ -21,6 +21,7 @@
  *******************************************************************************/
 package org.matcher.name;
 
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.either;
 import static org.hamcrest.Matchers.greaterThan;
@@ -46,6 +47,7 @@ import static org.matcher.name.NameBasedExpressions.lt;
 import static org.matcher.name.NameBasedExpressions.matching;
 import static org.matcher.name.NameBasedExpressions.max;
 import static org.matcher.name.NameBasedExpressions.min;
+import static org.matcher.name.NameBasedExpressions.orderBy;
 import static org.matcher.name.NameBasedExpressions.selection;
 import static org.matcher.name.NameBasedExpressions.sum;
 
@@ -314,6 +316,24 @@ public class NameBasedEntityMatcherTest {
 	final List<Object[]> tos = matcher.find(Object[].class, selection(TestOther.class, "bar").and(count("bar")),
 		groupBy("bar"));
 	assertThat(tos.size(), is(2));
+    }
+
+    @Test
+    public void testOrderBy() {
+	final List<TestClass> tos = matcher.find(TestClass.class, orderBy("foo"));
+	assertThat(tos.size(), is(4));
+	int min = Integer.MIN_VALUE;
+	for (TestClass t : tos) {
+	    assertThat(t.getFoo(), is(greaterThanOrEqualTo(min)));
+	    min = Math.min(t.getFoo(), min);
+	}
+    }
+    
+    @Test
+    public void testOrderByFunction() {
+	final List<String> tos = matcher.find(String.class, selection(TestOther.class, "bar"), groupBy("bar").and(orderBy(count("bar"))));
+	assertThat(tos.size(), is(2));
+	assertThat(tos, contains("Hello", "Snake"));
     }
 
     @Test

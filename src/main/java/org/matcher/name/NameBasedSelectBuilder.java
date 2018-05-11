@@ -8,8 +8,14 @@ import org.matcher.expression.SelectExpression;
 
 public class NameBasedSelectBuilder<T> extends SelectBuilder<T, NameBasedSelectBuilder<T>> {
 
+    public NameBasedSelectBuilder(Class<T> referent) {
+	super(referent);
+	setData(this);
+    }
+
     public NameBasedSelectBuilder(SelectExpression<T> expression) {
 	super(expression);
+	setData(this);
     }
 
     @Override
@@ -22,11 +28,8 @@ public class NameBasedSelectBuilder<T> extends SelectBuilder<T, NameBasedSelectB
 	return this;
     }
 
-    public NameBasedSelectBuilder<?> and(FunctionExpression<?>... expressions) {
-	for (FunctionExpression<?> expression : expressions) {
-	    expression.overwriteNullReferenceAndProperties(getReferent(), getProperty());
-	    getExpressions().add(expression);
-	}
+    public NameBasedSelectBuilder<T> and(FunctionExpression<?> expression, FunctionExpression<?>... others) {
+	addChild(selection(expression, others));
 	return this;
     }
 }

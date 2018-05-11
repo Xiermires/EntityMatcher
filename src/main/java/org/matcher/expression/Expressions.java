@@ -30,17 +30,24 @@ public class Expressions {
 	}
     };
 
-    public static final Selector GROUPBY = new Selector() {
+    public static final Selector ORDERBY = new Selector("ORDER BY ") {
 	@Override
 	public String resolve(String string) {
-	    return "GROUP BY " + string;
+	    return getSymbol() + string;
+	}
+    };
+    
+    public static final Selector GROUPBY = new Selector("GROUP BY ") {
+	@Override
+	public String resolve(String string) {
+	    return getSymbol() + string;
 	}
     };
 
-    public static final Selector DISTINCT = new Selector() {
+    public static final Selector DISTINCT = new Selector("DISTINCT ") {
 	@Override
-	public String resolve(String tableColumn) {
-	    return "DISTINCT " + tableColumn;
+	public String resolve(String string) {
+	    return getSymbol() + string;
 	}
     };
 

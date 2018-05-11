@@ -1,12 +1,9 @@
 package org.matcher.builder;
 
-import static org.matcher.expression.Expressions.AND;
-import static org.matcher.expression.Expressions.OR;
 import static org.matcher.expression.Expressions.closure;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.Iterator;
 import java.util.Set;
 
 import org.matcher.expression.BindingExpression;
@@ -15,7 +12,7 @@ import org.matcher.expression.OperatorExpression;
 import org.matcher.operator.Operator;
 import org.matcher.parameter.ParameterBinding;
 import org.matcher.util.Arborescence;
-import org.matcher.util.Node;
+import org.matcher.util.ExpressionIterator;
 
 public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends Arborescence<T> {
 
@@ -36,8 +33,10 @@ public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends 
      * The other builder inherits any types defined in the this builder.
      */
     public T or(T other) {
-	return mergeAfterLastExpression(null, null, other.hasChildren() ? closure(other) : other, OR);
+	return mergeAfterLastExpression(null, null, other.hasChildren() ? closure(other) : other, getOrOperator());
     }
+
+    protected abstract Operator getOrOperator();
 
     /**
      * Composes an AND expression between this and the other.
@@ -45,8 +44,10 @@ public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends 
      * The other builder inherits any types defined in the this builder.
      */
     public T and(T other) {
-	return mergeAfterLastExpression(null, null, other.hasChildren() ? closure(other) : other, AND);
+	return mergeAfterLastExpression(null, null, other.hasChildren() ? closure(other) : other, getAndOperator());
     }
+
+    protected abstract Operator getAndOperator();
 
     /**
      * Builds the expression and updates the parameter bindings.
@@ -58,15 +59,16 @@ public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends 
 	    Set<Class<?>> seenReferents, //
 	    ParameterBinding bindings) {
 
-	final Iterator<Expression<?, ?>> it = getExpressions().iterator();
+	final ExpressionIterator<T> it = new ExpressionIterator<>(this);
 	if (it.hasNext()) {
 	    Expression<?, ?> expression = it.next();
-	    if (fromAppender != null)
+	    if (fromAppender != null) {
 		fromAppender.append(expression.resolveFromClause(seenReferents));
-
-	    if (appender != null)
+	    }
+	    if (appender != null) {
 		appender.append(expression.resolve(bindings));
-
+	    }
+	    
 	    while (it.hasNext()) {
 		expression = it.next();
 
@@ -87,12 +89,43 @@ public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends 
 		}
 	    }
 	}
-
-	if (hasChildren()) {
-	    for (Node<T> child : getChildren()) {
-		child.getData().parseExpressions(appender, fromAppender, seenReferents, bindings);
-	    }
-	}
+	
+//	final Iterator<Expression<?, ?>> expressionIterator = getExpressions().iterator();
+//	if (expressionIterator.hasNext()) {
+//	    Expression<?, ?> expression = expressionIterator.next();
+//	    if (fromAppender != null) {
+//		fromAppender.append(expression.resolveFromClause(seenReferents));
+//	    }
+//	    if (appender != null) {
+//		appender.append(expression.resolve(bindings));
+//	    }
+//
+//	    while (expressionIterator.hasNext()) {
+//		expression = expressionIterator.next();
+//
+//		if (appender != null) {
+//		    final String resolve = expression.resolve(bindings);
+//		    if (!resolve.isEmpty()) {
+//			appender.append(getResolveSeparator());
+//			appender.append(resolve);
+//		    }
+//		}
+//
+//		if (fromAppender != null) {
+//		    final String resolveFrom = expression.resolveFromClause(seenReferents);
+//		    if (!resolveFrom.isEmpty()) {
+//			fromAppender.append(getResolveFromSeparator());
+//			fromAppender.append(resolveFrom);
+//		    }
+//		}
+//	    }
+//	}
+//
+//	if (hasChildren()) {
+//	    for (Node<T> child : getChildren()) {
+//		child.getData().parseExpressions(appender, fromAppender, seenReferents, bindings);
+//	    }
+//	}
     }
 
     protected abstract String getResolveFromSeparator();
@@ -110,10 +143,8 @@ public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends 
     void initializeBindings() {
 	if (hasChildren()) {
 	    getChildren().forEach(c -> c.getData().initializeBindings());
-
-	    final Expression<?, ?> bindingExpression = getExpressions().getFirst();
-	    overwriteNullReferenceAndProperties(bindingExpression.getReferent(), bindingExpression.getProperty());
-	} else if (!getExpressions().isEmpty()) {
+	}
+	if (!getExpressions().isEmpty()) {
 	    final Expression<?, ?> bindingExpression = getExpressions().getFirst();
 	    overwriteNullReferenceAndProperties(bindingExpression.getReferent(), bindingExpression.getProperty());
 	}
@@ -125,8 +156,12 @@ public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends 
 	    T other, //
 	    Operator operator) {
 
-	other.getExpressions().addFirst(new OperatorExpression(operator));
-	other.getExpressions().addFirst(new BindingExpression(referent, property));
+	if (operator != null) {
+	    other.getExpressions().addFirst(new OperatorExpression(operator));
+	}
+	if (referent != null || property != null) {
+	    other.getExpressions().addFirst(new BindingExpression(referent, property));
+	}
 	addChild(other);
 	return getThis();
     }
