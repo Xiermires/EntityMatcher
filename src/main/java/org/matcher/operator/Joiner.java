@@ -21,7 +21,7 @@
  *******************************************************************************/
 package org.matcher.operator;
 
-import org.matcher.BuilderUtils;
+import org.matcher.builder.BuilderUtils;
 
 public class Joiner extends Operator{
 

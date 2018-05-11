@@ -1,8 +1,8 @@
-package org.matcher;
+package org.matcher.builder;
 
-import static org.matcher.Expressions.AND;
-import static org.matcher.Expressions.OR;
-import static org.matcher.Expressions.closure;
+import static org.matcher.expression.Expressions.AND;
+import static org.matcher.expression.Expressions.OR;
+import static org.matcher.expression.Expressions.closure;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -13,6 +13,9 @@ import org.matcher.expression.BindingExpression;
 import org.matcher.expression.Expression;
 import org.matcher.expression.OperatorExpression;
 import org.matcher.operator.Operator;
+import org.matcher.parameter.ParameterBinding;
+import org.matcher.util.Arborescence;
+import org.matcher.util.Node;
 
 public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends Arborescence<T> {
 

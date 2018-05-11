@@ -1,10 +1,9 @@
-package org.matcher;
+package org.matcher.expression;
 
 import java.util.Collection;
 
-import org.matcher.expression.Expression;
-import org.matcher.expression.OperatorExpression;
-import org.matcher.expression.SelectExpression;
+import org.matcher.builder.ExpressionBuilder;
+import org.matcher.builder.SelectBuilder;
 import org.matcher.name.NameBasedSelectBuilder;
 import org.matcher.operator.Functor;
 import org.matcher.operator.Joiner;
@@ -12,6 +11,7 @@ import org.matcher.operator.Negatable;
 import org.matcher.operator.Operator;
 import org.matcher.operator.Qualifier;
 import org.matcher.operator.Selector;
+import org.matcher.parameter.ParameterBinding;
 
 public class Expressions {
 
@@ -50,7 +50,7 @@ public class Expressions {
     public static final Functor SUM = new Functor("SUM");
     public static final Functor COUNT = new Functor("COUNT");
 
-    public static SelectBuilder<?> count(SelectBuilder<?> otherExpression) {
+    public static SelectBuilder<?, ?> count(SelectBuilder<?,  ?> otherExpression) {
 	final SelectExpression<?> count = new SelectExpression<>(COUNT);
 	count.setReferent(otherExpression.getReferent());
 	count.setProperty(otherExpression.getProperty());

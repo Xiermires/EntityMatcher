@@ -1,17 +1,17 @@
-package org.matcher;
+package org.matcher.builder;
 
 import java.util.Set;
 
 import org.matcher.expression.SelectExpression;
+import org.matcher.parameter.ParameterBinding;
 
-public class SelectBuilder<T> extends ExpressionBuilder<SelectBuilder<T>> {
+public abstract class SelectBuilder<T, E extends SelectBuilder<T, E>> extends ExpressionBuilder<E> {
 
     private final Class<T> referent;
     private final String property;
 
     public SelectBuilder(SelectExpression<T> expression) {
 	super();
-	setData(this);
 	expressions.add(expression);
 	referent = expression.getReferent();
 	property = expression.getProperty();
@@ -23,11 +23,6 @@ public class SelectBuilder<T> extends ExpressionBuilder<SelectBuilder<T>> {
 
     public String getProperty() {
 	return property;
-    }
-
-    @Override
-    protected SelectBuilder<T> getThis() {
-	return this;
     }
 
     @Override

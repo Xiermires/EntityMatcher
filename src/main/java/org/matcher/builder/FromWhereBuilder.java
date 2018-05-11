@@ -1,6 +1,8 @@
-package org.matcher;
+package org.matcher.builder;
 
 import java.util.Set;
+
+import org.matcher.parameter.ParameterBinding;
 
 public abstract class FromWhereBuilder<T extends ExpressionBuilder<T>> extends ExpressionBuilder<T> {
 

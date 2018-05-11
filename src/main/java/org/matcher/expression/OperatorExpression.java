@@ -21,7 +21,7 @@
  *******************************************************************************/
 package org.matcher.expression;
 
-import org.matcher.ParameterBinding;
+import org.matcher.parameter.ParameterBinding;
 import org.matcher.operator.Operator;
 
 public class OperatorExpression extends NonResolvingExpression<Operator, Object> {

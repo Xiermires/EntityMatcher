@@ -5,8 +5,8 @@ import static org.matcher.bean.BeanBasedMatcher.getPropertyName;
 import java.util.Deque;
 import java.util.Set;
 
-import org.matcher.FromWhereBuilder;
-import org.matcher.ParameterBinding;
+import org.matcher.builder.FromWhereBuilder;
+import org.matcher.parameter.ParameterBinding;
 import org.matcher.bean.InvokationCapturer.Capture;
 import org.matcher.expression.BindingExpression;
 import org.matcher.expression.Expression;

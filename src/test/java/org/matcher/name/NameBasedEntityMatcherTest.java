@@ -31,8 +31,8 @@ import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertThat;
-import static org.matcher.Expressions.closure;
-import static org.matcher.Expressions.not;
+import static org.matcher.expression.Expressions.closure;
+import static org.matcher.expression.Expressions.not;
 import static org.matcher.name.NameBasedExpressions.avg;
 import static org.matcher.name.NameBasedExpressions.between;
 import static org.matcher.name.NameBasedExpressions.count;
@@ -61,10 +61,10 @@ import org.hamcrest.Matchers;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.matcher.EntityMatcher;
-import org.matcher.ParameterBindingImpl;
 import org.matcher.TestClass;
 import org.matcher.TestJoin;
 import org.matcher.TestOther;
+import org.matcher.parameter.ParameterBindingImpl;
 
 public class NameBasedEntityMatcherTest {
     static EntityMatcher matcher;

@@ -21,15 +21,15 @@
  *******************************************************************************/
 package org.matcher.name;
 
-import static org.matcher.Expressions.AND;
-import static org.matcher.Expressions.OR;
-import static org.matcher.Expressions.closure;
+import static org.matcher.expression.Expressions.AND;
+import static org.matcher.expression.Expressions.OR;
+import static org.matcher.expression.Expressions.closure;
 
 import java.util.Iterator;
 
-import org.matcher.FromWhereBuilder;
-import org.matcher.Node;
-import org.matcher.ParameterBinding;
+import org.matcher.builder.FromWhereBuilder;
+import org.matcher.util.Node;
+import org.matcher.parameter.ParameterBinding;
 import org.matcher.expression.BindingExpression;
 import org.matcher.expression.Expression;
 

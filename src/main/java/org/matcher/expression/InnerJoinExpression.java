@@ -21,13 +21,13 @@
  *******************************************************************************/
 package org.matcher.expression;
 
-import static org.matcher.BuilderUtils.getColumnName;
-import static org.matcher.BuilderUtils.getTableName;
-import static org.matcher.BuilderUtils.toAlias;
+import static org.matcher.builder.BuilderUtils.getColumnName;
+import static org.matcher.builder.BuilderUtils.getTableName;
+import static org.matcher.builder.BuilderUtils.toAlias;
 
 import java.util.Set;
 
-import org.matcher.ParameterBinding;
+import org.matcher.parameter.ParameterBinding;
 import org.matcher.operator.Joiner;
 
 public class InnerJoinExpression extends Expression<Joiner, Object> {

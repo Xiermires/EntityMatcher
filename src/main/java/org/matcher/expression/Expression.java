@@ -23,8 +23,8 @@ package org.matcher.expression;
 
 import java.util.Set;
 
-import org.matcher.Arborescence;
-import org.matcher.ParameterBinding;
+import org.matcher.util.Arborescence;
+import org.matcher.parameter.ParameterBinding;
 import org.matcher.operator.Operator;
 
 public abstract class Expression<T extends Operator, V> extends Arborescence<Expression<T, V>> {

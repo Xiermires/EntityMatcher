@@ -21,16 +21,16 @@
  *******************************************************************************/
 package org.matcher.expression;
 
-import static org.matcher.BuilderUtils.getColumnName;
-import static org.matcher.BuilderUtils.getTableName;
-import static org.matcher.BuilderUtils.tableColumn;
-import static org.matcher.BuilderUtils.toAlias;
-import static org.matcher.Expressions.NONE;
+import static org.matcher.builder.BuilderUtils.getColumnName;
+import static org.matcher.builder.BuilderUtils.getTableName;
+import static org.matcher.builder.BuilderUtils.tableColumn;
+import static org.matcher.builder.BuilderUtils.toAlias;
+import static org.matcher.expression.Expressions.NONE;
 
 import java.util.Iterator;
 
-import org.matcher.Node;
-import org.matcher.ParameterBinding;
+import org.matcher.util.Node;
+import org.matcher.parameter.ParameterBinding;
 import org.matcher.operator.Selector;
 
 import com.google.common.base.Strings;

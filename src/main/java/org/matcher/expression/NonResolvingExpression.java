@@ -23,7 +23,7 @@ package org.matcher.expression;
 
 import java.util.Set;
 
-import org.matcher.ParameterBinding;
+import org.matcher.parameter.ParameterBinding;
 import org.matcher.operator.Operator;
 
 /**

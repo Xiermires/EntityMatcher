@@ -6,7 +6,7 @@ import static org.matcher.bean.BeanBasedMatcher.getReferent;
 import java.util.Collection;
 import java.util.List;
 
-import org.matcher.Expressions;
+import org.matcher.expression.Expressions;
 import org.matcher.bean.InvokationCapturer.Capture;
 import org.matcher.expression.SelectExpression;
 import org.matcher.name.NameBasedExpressions;

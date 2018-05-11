@@ -23,9 +23,9 @@ package org.matcher.name;
 
 import java.util.Collection;
 
-import org.matcher.ExpressionBuilder;
-import org.matcher.Expressions;
-import org.matcher.expression.AggregatorExpression;
+import org.matcher.builder.ExpressionBuilder;
+import org.matcher.expression.Expressions;
+import org.matcher.expression.AggregateExpression;
 import org.matcher.expression.Expression;
 import org.matcher.expression.FunctionExpression;
 import org.matcher.expression.JoinQualifierExpression;
@@ -38,28 +38,21 @@ public class NameBasedExpressions extends Expressions {
 
     // select / functions / aggregators
 
-    public static <T> NameBasedSelectBuilder<T> selection(String... properties) {
-	if (properties.length == 0)
-	    return new NameBasedSelectBuilder<T>(new SelectExpression<>(NONE));
-
-	final NameBasedSelectBuilder<T> builder = new NameBasedSelectBuilder<T>(new SelectExpression<>(PROPERTY,
-		properties[0]));
-	for (int i = 1; i < properties.length; i++) {
-	    builder.getExpressions().add(new SelectExpression<>(PROPERTY, properties[i]));
+    public static <T> NameBasedSelectBuilder<T> selection(String property, String... others) {
+	final SelectExpression<T> expression = new SelectExpression<>(NONE);
+	expression.addChild(new SelectExpression<>(PROPERTY, property));
+	for (String other : others) {
+	    expression.addChild(new SelectExpression<>(PROPERTY, other));
 	}
-	return builder;
+	return new NameBasedSelectBuilder<T>(expression);
     }
 
-    public static <T> NameBasedSelectBuilder<T> selection(Class<T> referent, String... properties) {
-	if (properties.length == 0)
-	    return new NameBasedSelectBuilder<T>(new SelectExpression<>(referent));
+    public static <T> NameBasedSelectBuilder<T> selection(Class<T> referent) {
+	return new NameBasedSelectBuilder<T>(new SelectExpression<>(referent));
+    }
 
-	final NameBasedSelectBuilder<T> builder = new NameBasedSelectBuilder<T>(new SelectExpression<>(PROPERTY,
-		referent, properties[0]));
-	for (int i = 1; i < properties.length; i++) {
-	    builder.getExpressions().add(new SelectExpression<>(PROPERTY, referent, properties[i]));
-	}
-	return builder;
+    public static <T> NameBasedSelectBuilder<T> selection(Class<T> referent, String property, String... others) {
+	return selection(referent).and(selection(property, others));
     }
 
     public static <T> NameBasedSelectBuilder<T> selection(FunctionExpression<T> f1) {
@@ -171,8 +164,8 @@ public class NameBasedExpressions extends Expressions {
      * <p>
      * i.e. {@code groupBy("foo", "bar")} translates as {@code GROUP BY ?.foo, ?.bar}.
      */
-    public static AggregatorExpression<?> groupBy(String... properties) {
-	final AggregatorExpression<?> expression = new AggregatorExpression<>(GROUPBY);
+    public static AggregateExpression<?> groupBy(String... properties) {
+	final AggregateExpression<?> expression = new AggregateExpression<>(GROUPBY);
 	for (String property : properties) {
 	    expression.addChild(new SelectExpression<>(PROPERTY, property));
 	}
@@ -184,8 +177,8 @@ public class NameBasedExpressions extends Expressions {
      * <p>
      * i.e. {@code groupBy("foo", "bar")} translates as {@code GROUP BY ?.foo, ?.bar}.
      */
-    public static AggregatorExpression<?> groupBy(FunctionExpression<?> function) {
-	final AggregatorExpression<?> expression = new AggregatorExpression<>(GROUPBY);
+    public static AggregateExpression<?> groupBy(FunctionExpression<?> function) {
+	final AggregateExpression<?> expression = new AggregateExpression<>(GROUPBY);
 	expression.setReferent(function.getReferent());
 	expression.setProperty(function.getProperty());
 	expression.addChild(function);

@@ -1,8 +1,8 @@
 package org.matcher.expression;
 
-import static org.matcher.BuilderUtils.getTableName;
-import static org.matcher.BuilderUtils.toAlias;
-import static org.matcher.Expressions.NONE;
+import static org.matcher.builder.BuilderUtils.getTableName;
+import static org.matcher.builder.BuilderUtils.toAlias;
+import static org.matcher.expression.Expressions.NONE;
 
 import java.util.Set;
 

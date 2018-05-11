@@ -21,7 +21,7 @@
  *******************************************************************************/
 package org.matcher.operator;
 
-import org.matcher.ParameterBinding;
+import org.matcher.parameter.ParameterBinding;
 
 
 public class Qualifier<T> extends Operator implements Negatable {
