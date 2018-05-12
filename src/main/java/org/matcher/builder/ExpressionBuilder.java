@@ -27,7 +27,6 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Set;
 
-import org.matcher.expression.BindingExpression;
 import org.matcher.expression.Expression;
 import org.matcher.expression.OperatorExpression;
 import org.matcher.operator.Operator;
@@ -35,16 +34,46 @@ import org.matcher.parameter.ParameterBinding;
 import org.matcher.util.Arborescence;
 import org.matcher.util.ExpressionBuilderIterator;
 
-public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends Arborescence<T> {
+public abstract class ExpressionBuilder<Builder extends ExpressionBuilder<Builder>> extends Arborescence<Builder> {
 
-    protected final Deque<Expression<?, ?>> expressions = new ArrayDeque<>();
+    private Class<?> referent;
+    private String property;
 
-    protected abstract T getThis();
+    private final Deque<Expression<?>> expressions = new ArrayDeque<>();
+
+    protected ExpressionBuilder(Class<?> referent) {
+	this.referent = referent;
+	this.property = null;
+	setData(getThis());
+    }
+
+    protected ExpressionBuilder(Expression<?> expression) {
+	expressions.add(expression);
+	this.referent = expression.getReferent();
+	this.property = expression.getProperty();
+	setData(getThis());
+    }
+
+    protected ExpressionBuilder(Class<?> referent, String property) {
+	this.referent = referent;
+	this.property = property;
+	setData(getThis());
+    }
+
+    protected abstract Builder getThis();
+
+    public Class<?> getReferent() {
+	return referent;
+    }
+
+    public String getProperty() {
+	return property;
+    }
 
     /**
      * Gets the expressions assigned to this builder.
      */
-    public Deque<Expression<?, ?>> getExpressions() {
+    public Deque<Expression<?>> getExpressions() {
 	return expressions;
     }
 
@@ -53,7 +82,7 @@ public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends 
      * <p>
      * The other builder inherits any types defined in the this builder.
      */
-    public T or(T other) {
+    public Builder or(Builder other) {
 	return mergeAfterLastExpression(null, null, other.hasChildren() ? closure(other) : other, getOrOperator());
     }
 
@@ -64,7 +93,7 @@ public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends 
      * <p>
      * The other builder inherits any types defined in the this builder.
      */
-    public T and(T other) {
+    public Builder and(Builder other) {
 	return mergeAfterLastExpression(null, null, other.hasChildren() ? closure(other) : other, getAndOperator());
     }
 
@@ -80,16 +109,16 @@ public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends 
 	    Set<Class<?>> seenReferents, //
 	    ParameterBinding bindings) {
 
-	final ExpressionBuilderIterator<T> it = new ExpressionBuilderIterator<>(this);
+	final ExpressionBuilderIterator<Builder> it = new ExpressionBuilderIterator<>(this);
 	if (it.hasNext()) {
-	    Expression<?, ?> expression = it.next();
+	    Expression<?> expression = it.next();
 	    if (fromAppender != null) {
 		fromAppender.append(expression.resolveFromClause(seenReferents));
 	    }
 	    if (appender != null) {
 		appender.append(expression.resolve(bindings));
 	    }
-	    
+
 	    while (it.hasNext()) {
 		expression = it.next();
 
@@ -118,7 +147,7 @@ public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends 
 
     public void overwriteNullReferenceAndProperties(Class<?> referent, String property) {
 
-	for (Expression<?, ?> expression : getExpressions()) {
+	for (Expression<?> expression : getExpressions()) {
 	    expression.overwriteNullReferenceAndProperties(referent, property);
 	}
 	getChildren().forEach(node -> node.getData().overwriteNullReferenceAndProperties(referent, property));
@@ -129,22 +158,24 @@ public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends 
 	    getChildren().forEach(c -> c.getData().initializeBindings());
 	}
 	if (!getExpressions().isEmpty()) {
-	    final Expression<?, ?> bindingExpression = getExpressions().getFirst();
-	    overwriteNullReferenceAndProperties(bindingExpression.getReferent(), bindingExpression.getProperty());
+	    overwriteNullReferenceAndProperties(getReferent(), getProperty());
 	}
     }
 
-    protected T mergeAfterLastExpression(//
+    protected Builder mergeAfterLastExpression(//
 	    Class<?> referent, //
 	    String property, //
-	    T other, //
+	    Builder other, //
 	    Operator operator) {
 
 	if (operator != null) {
 	    other.getExpressions().addFirst(new OperatorExpression(operator));
 	}
-	if (referent != null || property != null) {
-	    other.getExpressions().addFirst(new BindingExpression(referent, property));
+	if (referent != null) {
+	    this.referent = referent;
+	}
+	if (property != null) {
+	    this.property = property;
 	}
 	addChild(other);
 	return getThis();

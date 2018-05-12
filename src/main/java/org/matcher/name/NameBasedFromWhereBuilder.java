@@ -28,7 +28,6 @@ import static org.matcher.expression.Expressions.closure;
 import java.util.Iterator;
 
 import org.matcher.builder.FromWhereBuilder;
-import org.matcher.expression.BindingExpression;
 import org.matcher.expression.Expression;
 import org.matcher.parameter.ParameterBinding;
 import org.matcher.util.Node;
@@ -44,10 +43,8 @@ import org.matcher.util.Node;
  */
 public class NameBasedFromWhereBuilder extends FromWhereBuilder<NameBasedFromWhereBuilder> {
 
-    public NameBasedFromWhereBuilder(Expression<?, ?> expression) {
-	super();
-	setData(this);
-	expressions.add(expression);
+    public NameBasedFromWhereBuilder(Expression<?> expression) {
+	super(expression);
     }
 
     @Override
@@ -98,20 +95,11 @@ public class NameBasedFromWhereBuilder extends FromWhereBuilder<NameBasedFromWhe
 	final StringBuilder sb = new StringBuilder();
 	sb.append(" ( ");
 
-	final Iterator<Expression<?, ?>> it = expressions.iterator();
-	final Expression<?, ?> first = it.next();
-	if (first instanceof BindingExpression) {
-	    sb.append(" { ");
-	    sb.append(first.toString());
-	    for (; it.hasNext();) {
-		sb.append(it.next());
-	    }
-	    sb.append(" } ");
-	} else {
-	    sb.append(first.toString());
-	    for (; it.hasNext();) {
-		sb.append(it.next());
-	    }
+	final Iterator<Expression<?>> it = getExpressions().iterator();
+	final Expression<?> first = it.next();
+	sb.append(first.toString());
+	for (; it.hasNext();) {
+	    sb.append(it.next());
 	}
 
 	for (Node<NameBasedFromWhereBuilder> node : getChildren()) {

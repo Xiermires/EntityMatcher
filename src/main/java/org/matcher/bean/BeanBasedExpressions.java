@@ -76,7 +76,7 @@ public class BeanBasedExpressions extends Expressions {
 	final Class<?> referent = getReferent(capture);
 	final String property = getPropertyName(capture);
 
-	return new SelectExpression<>(selector, referent, property);
+	return new SelectExpression<>(selector.getSymbol(), referent, property);
     }
 
     private static <T> BeanBasedSelectBuilder<?> createSelectBuilder(Operator selector, T capture) {
@@ -87,7 +87,7 @@ public class BeanBasedExpressions extends Expressions {
 	final Class<?> referent = getReferent(capture);
 	final String property = getPropertyName(capture);
 
-	return new BeanBasedSelectBuilder<>(new SelectExpression<>(selector, referent, property));
+	return new BeanBasedSelectBuilder<>(new SelectExpression<>(selector.getSymbol(), referent, property));
     }
 
     // matchers

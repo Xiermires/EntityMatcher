@@ -335,6 +335,13 @@ public class NameBasedEntityMatcherTest {
 	assertThat(tos.size(), is(2));
 	assertThat(tos, contains("Hello", "Snake"));
     }
+    
+//    @Test
+//    public void testHavingCount() {
+//	final List<String> tos = matcher.find(String.class, selection(TestOther.class, "bar"), groupBy("bar").and(having(count("bar"), gt(2))));
+//	assertThat(tos.size(), is(2));
+//	assertThat(tos, contains("Hello", "Snake"));
+//    }
 
     @Test
     public void tryMatchingSignatures() {

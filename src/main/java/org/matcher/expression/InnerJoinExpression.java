@@ -21,22 +21,23 @@
  *******************************************************************************/
 package org.matcher.expression;
 
+import static org.matcher.builder.BuilderUtils.aliasPlusColumn;
 import static org.matcher.builder.BuilderUtils.getColumnName;
 import static org.matcher.builder.BuilderUtils.getTableName;
 import static org.matcher.builder.BuilderUtils.toAlias;
 
 import java.util.Set;
 
-import org.matcher.parameter.ParameterBinding;
 import org.matcher.operator.Joiner;
+import org.matcher.parameter.ParameterBinding;
 
-public class InnerJoinExpression extends Expression<Joiner, Object> {
+public class InnerJoinExpression extends Expression<Object> {
 
     private final Class<?> otherReferent;
     private final String otherProperty;
-    
+
     public InnerJoinExpression(Joiner joiner, Class<?> joinReferent, String joinProperty) {
-	super(joiner);
+	super(joiner.getSymbol());
 	this.otherReferent = joinReferent;
 	this.otherProperty = joinProperty;
     }
@@ -51,7 +52,8 @@ public class InnerJoinExpression extends Expression<Joiner, Object> {
 	final String joinAlias = toAlias(joinTable);
 	final String joinColumn = getColumnName(otherReferent, otherProperty);
 
-	return getOperator().resolve(table, alias, column, joinTable, joinAlias, joinColumn);
+	return table + " " + alias + getOperator() + joinTable + " " + joinAlias + " ON "
+		+ aliasPlusColumn(alias, column) + " = " + aliasPlusColumn(joinAlias, joinColumn);
     }
 
     @Override

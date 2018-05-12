@@ -44,4 +44,12 @@ public class NegatableOperator extends Operator implements Negatable {
     public boolean isNegated() {
 	return isNegated;
     }
+    
+    public String getAffirmed() {
+	return affirmed;
+    }
+    
+    public String getNegated() {
+	return negated;
+    }
 }

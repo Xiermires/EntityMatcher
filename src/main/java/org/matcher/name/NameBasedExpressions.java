@@ -167,7 +167,7 @@ public class NameBasedExpressions extends Expressions {
     }
 
     public static <T> SelectExpression<T> distinct(Class<T> referent, String property) {
-	return new SelectExpression<T>(DISTINCT, referent, property);
+	return new SelectExpression<T>(DISTINCT.getSymbol(), referent, property);
     }
 
     // group by
@@ -178,7 +178,7 @@ public class NameBasedExpressions extends Expressions {
      * i.e. {@code groupBy("foo", "bar")} translates as {@code GROUP BY ?.foo, ?.bar}.
      */
     public static NameBasedAggregateBuilder<?> groupBy(String property, String... others) {
-	final FunctionExpression<?> expression = new FunctionExpression<>(GROUPBY);
+	final SelectExpression<?> expression = new SelectExpression<>(GROUPBY);
 	expression.addChild(new SelectExpression<>(PROPERTY, property));
 	for (String other : others) {
 	    expression.addChild(new SelectExpression<>(PROPERTY, other));
@@ -191,22 +191,24 @@ public class NameBasedExpressions extends Expressions {
      * <p>
      * i.e. {@code groupBy("foo", "bar")} translates as {@code GROUP BY ?.foo, ?.bar}.
      */
-    public static NameBasedAggregateBuilder<?> groupBy(FunctionExpression<?> function, FunctionExpression<?>... others) {
-	final FunctionExpression<?> expression = new FunctionExpression<>(GROUPBY);
+    public static NameBasedAggregateBuilder<?> groupBy(SelectExpression<?> function, SelectExpression<?>... others) {
+	final SelectExpression<?> expression = new SelectExpression<>(GROUPBY);
 	expression.addChild(function);
-	for (FunctionExpression<?> other : others) {
+	for (SelectExpression<?> other : others) {
 	    expression.addChild(other);
 	}
 	return new NameBasedAggregateBuilder<>(expression);
     }
 
+    // order by
+
     /**
-     * A group by expression, where each property belongs to the leading query referent.
+     * An order by expression, where each property belongs to the leading query referent.
      * <p>
      * i.e. {@code groupBy("foo", "bar")} translates as {@code GROUP BY ?.foo, ?.bar}.
      */
     public static <T> NameBasedAggregateBuilder<T> orderBy(String property, String... others) {
-	final FunctionExpression<T> expression = new FunctionExpression<>(ORDERBY);
+	final SelectExpression<T> expression = new SelectExpression<>(ORDERBY);
 	expression.addChild(new SelectExpression<>(PROPERTY, property));
 	for (String other : others) {
 	    expression.addChild(new SelectExpression<>(PROPERTY, other));
@@ -215,19 +217,36 @@ public class NameBasedExpressions extends Expressions {
     }
 
     /**
-     * A group by expression, where each property belongs to the leading query referent.
+     * An order by expression, where each property belongs to the leading query referent.
      * <p>
      * i.e. {@code groupBy("foo", "bar")} translates as {@code GROUP BY ?.foo, ?.bar}.
      */
-    public static <T> NameBasedAggregateBuilder<T> orderBy(FunctionExpression<?> function,
-	    FunctionExpression<?>... others) {
-	final FunctionExpression<T> expression = new FunctionExpression<>(ORDERBY);
+    public static <T> NameBasedAggregateBuilder<T> orderBy(SelectExpression<?> function, SelectExpression<?>... others) {
+	final SelectExpression<T> expression = new SelectExpression<>(ORDERBY);
 	expression.addChild(function);
-	for (FunctionExpression<?> other : others) {
+	for (SelectExpression<?> other : others) {
 	    expression.addChild(other);
 	}
 	return new NameBasedAggregateBuilder<>(expression);
     }
+
+    // having
+
+//    /**
+//     * A having expression, where each property belongs to the leading query referent.
+//     * <p>
+//     * i.e. {@code groupBy("foo", "bar")} translates as {@code GROUP BY ?.foo, ?.bar}.
+//     */
+//    public static <T> NameBasedAggregateBuilder<T> having(SelectExpression<?> function,
+//	    NameBasedFromWhereBuilder qualifier) {
+//	final SelectExpression<T> expression = new SelectExpression<>(HAVING);
+//	expression.addChild(function);
+//
+//	for (Expression<?> qualifierExpression : qualifier.getExpressions()) {
+//	    expression.addChild(qualifierExpression);
+//	}
+//	return new NameBasedAggregateBuilder<>(expression);
+//    }
 
     // matchers
 
@@ -237,7 +256,7 @@ public class NameBasedExpressions extends Expressions {
      * Equivalent to ?.? = other.property
      */
     public static NameBasedFromWhereBuilder matching(Class<?> other, String otherProperty) {
-	final Expression<?, ?> expression = new JoinQualifierExpression(EQ(String.class), other, otherProperty);
+	final Expression<?> expression = new JoinQualifierExpression(EQ(String.class), other, otherProperty);
 	final NameBasedFromWhereBuilder builder = new NameBasedFromWhereBuilder(expression);
 	return matching(null, otherProperty, builder);
     }

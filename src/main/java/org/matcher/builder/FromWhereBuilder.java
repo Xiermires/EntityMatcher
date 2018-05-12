@@ -26,10 +26,23 @@ import static org.matcher.expression.Expressions.OR;
 
 import java.util.Set;
 
+import org.matcher.expression.Expression;
 import org.matcher.operator.Operator;
 import org.matcher.parameter.ParameterBinding;
 
 public abstract class FromWhereBuilder<T extends ExpressionBuilder<T>> extends ExpressionBuilder<T> {
+
+    protected FromWhereBuilder(Class<?> referent) {
+	super(referent);
+    }
+    
+    protected FromWhereBuilder(Expression<?> expression) {
+	super(expression);
+    }
+
+    protected FromWhereBuilder(Class<?> referent, String property) {
+	super(referent, property);
+    }
 
     @Override
     public String build(Set<Class<?>> seenReferents, ParameterBinding bindings) {
@@ -54,7 +67,7 @@ public abstract class FromWhereBuilder<T extends ExpressionBuilder<T>> extends E
 
     @Override
     protected String getResolveSeparator() {
-	return " ";
+	return "";
     }
 
     @Override

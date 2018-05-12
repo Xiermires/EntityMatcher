@@ -50,6 +50,6 @@ public class FunctionExpression<T> extends SelectExpression<T> {
 
     @Override
     protected String apply(String result) {
-	return getOperator().getSymbol() + "(" + result + ")";
+	return getOperator() + "(" + result + ")";
     }
 }

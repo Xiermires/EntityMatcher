@@ -26,13 +26,22 @@ import static org.matcher.builder.BuilderUtils.getColumnName;
 import static org.matcher.builder.BuilderUtils.getTableName;
 import static org.matcher.builder.BuilderUtils.toAlias;
 
+import org.matcher.operator.Negatable;
 import org.matcher.operator.NegatableOperator;
 import org.matcher.parameter.ParameterBinding;
 
-public class QualifierExpression<T> extends Expression<NegatableOperator, T> {
+public class QualifierExpression<T> extends Expression<T> implements Negatable {
+
+    private final String affirmed;
+    private final String negated;
+
+    private boolean isNegated;
 
     public QualifierExpression(NegatableOperator qualifier, T value) {
-	super(qualifier, value);
+	super(qualifier.getSymbol(), value);
+	this.affirmed = qualifier.getAffirmed();
+	this.negated = qualifier.getNegated();
+	this.isNegated = qualifier.isNegated();
     }
 
     @Override
@@ -45,13 +54,13 @@ public class QualifierExpression<T> extends Expression<NegatableOperator, T> {
 	if (getValue() == null) {
 	    rhs = nullParameter();
 	} else {
-	    rhs = getOperator().getSymbol() + " " + bindings.createParam(getValue());
+	    rhs = getOperator() + " " + bindings.createParam(getValue());
 	}
 	return lhs + rhs;
     }
 
     private String nullParameter() {
-	return getOperator().isNegated() ? " IS NOT NULL " : " IS NULL ";
+	return isNegated ? " IS NOT NULL " : " IS NULL ";
     }
 
     @Override
@@ -59,5 +68,11 @@ public class QualifierExpression<T> extends Expression<NegatableOperator, T> {
 	final String ref = getReferent() == null ? "?" : getReferent().getSimpleName();
 	final String prop = getProperty() == null ? "?" : getProperty();
 	return ref + "." + prop + getOperator() + getValue();
+    }
+
+    @Override
+    public void negate() {
+	setOperator(isNegated ? affirmed : negated);
+	isNegated = !isNegated;
     }
 }

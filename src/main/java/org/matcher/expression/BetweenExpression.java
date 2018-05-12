@@ -41,7 +41,7 @@ public class BetweenExpression extends QualifierExpression<Boundaries> {
 	final String alias = toAlias(getTableName(getReferent()));
 	final String column = getColumnName(getReferent(), getProperty());
 	final String lhs = aliasPlusColumn(alias, column);
-	String rhs = getOperator().getSymbol() + //
+	String rhs = getOperator() + //
 		bindings.createParam(getValue().min) + " AND " + //
 		bindings.createParam(getValue().max);
 	

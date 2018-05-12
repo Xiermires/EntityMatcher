@@ -26,20 +26,20 @@ import static org.matcher.bean.BeanBasedMatcher.getPropertyName;
 import java.util.Deque;
 import java.util.Set;
 
-import org.matcher.builder.FromWhereBuilder;
-import org.matcher.parameter.ParameterBinding;
 import org.matcher.bean.InvokationCapturer.Capture;
-import org.matcher.expression.BindingExpression;
+import org.matcher.builder.FromWhereBuilder;
 import org.matcher.expression.Expression;
 import org.matcher.expression.OperatorExpression;
 import org.matcher.name.NameBasedFromWhereBuilder;
 import org.matcher.operator.Operator;
+import org.matcher.parameter.ParameterBinding;
 
 public class BeanBasedFromWhereBuilder extends FromWhereBuilder<BeanBasedFromWhereBuilder> {
 
     private final NameBasedFromWhereBuilder delegate;
 
     public BeanBasedFromWhereBuilder(NameBasedFromWhereBuilder wrapped) {
+	super(wrapped.getReferent(), wrapped.getProperty());
 	this.delegate = wrapped;
     }
 
@@ -49,7 +49,7 @@ public class BeanBasedFromWhereBuilder extends FromWhereBuilder<BeanBasedFromWhe
     }
 
     @Override
-    public Deque<Expression<?, ?>> getExpressions() {
+    public Deque<Expression<?>> getExpressions() {
 	return delegate.getExpressions();
     }
 
@@ -81,9 +81,9 @@ public class BeanBasedFromWhereBuilder extends FromWhereBuilder<BeanBasedFromWhe
 	    String property, //
 	    BeanBasedFromWhereBuilder other, //
 	    Operator operator) {
-
+	
 	other.delegate.getExpressions().addFirst(new OperatorExpression(operator));
-	other.delegate.getExpressions().addFirst(new BindingExpression(referent, property));
+	other.delegate.overwriteNullReferenceAndProperties(referent, property);
 	delegate.addChild(other.delegate);
 	return getThis();
     }

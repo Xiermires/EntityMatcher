@@ -30,24 +30,23 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import org.matcher.operator.Operator;
 import org.matcher.parameter.ParameterBinding;
 import org.matcher.util.Arborescence;
 import org.matcher.util.Node;
 
-public abstract class Expression<T extends Operator, V> extends Arborescence<Expression<T, V>> {
+public abstract class Expression<V> extends Arborescence<Expression<V>> {
 
     private final V value;
-    private T operator;
+    private String operator;
 
     private Class<?> referent;
     private String property;
 
-    public Expression(T operator) {
+    public Expression(String operator) {
 	this(operator, null);
     }
 
-    public Expression(T operator, V value) {
+    public Expression(String operator, V value) {
 	this.operator = operator;
 	this.value = value;
     }
@@ -76,7 +75,7 @@ public abstract class Expression<T extends Operator, V> extends Arborescence<Exp
     public String resolve(ParameterBinding bindings) {
 	if (hasChildren()) {
 	    final List<String> results = new ArrayList<>();
-	    for (Node<Expression<T, V>> child : getChildren()) {
+	    for (Node<Expression<V>> child : getChildren()) {
 		results.add(child.getData().resolve(bindings));
 	    }
 	    return combine(results);
@@ -87,25 +86,25 @@ public abstract class Expression<T extends Operator, V> extends Arborescence<Exp
 
     protected String combine(List<String> results) {
 	final StringBuilder sb = new StringBuilder();
-	boolean appendSeparator = false;
 	final Iterator<String> it = results.iterator();
-	String next = it.next();
-	if (next != null && !next.isEmpty()) {
-	    sb.append(next);
-	    appendSeparator = true;
-	}
+	boolean appendSeparator = appendNext(sb, it.next());
+
 	while (it.hasNext()) {
 	    if (appendSeparator) {
 		sb.append(getResolveSeparator());
 		appendSeparator = false;
 	    }
-	    next = it.next();
-	    if (next != null && !next.isEmpty()) {
-		sb.append(next);
-		appendSeparator = true;
-	    }
+	    appendSeparator = appendNext(sb, it.next());
 	}
 	return apply(sb.toString());
+    }
+
+    private boolean appendNext(StringBuilder appender, String next) {
+	if (next != null && !next.isEmpty()) {
+	    appender.append(next);
+	    return true;
+	}
+	return false;
     }
 
     protected String apply(String result) {
@@ -116,8 +115,12 @@ public abstract class Expression<T extends Operator, V> extends Arborescence<Exp
 	return "";
     }
 
-    public T getOperator() {
+    public String getOperator() {
 	return operator;
+    }
+    
+    protected void setOperator(String operator) {
+	this.operator = operator;
     }
 
     public void setReferent(Class<?> referent) {

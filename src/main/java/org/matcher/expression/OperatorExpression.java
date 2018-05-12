@@ -21,13 +21,15 @@
  *******************************************************************************/
 package org.matcher.expression;
 
-import org.matcher.parameter.ParameterBinding;
-import org.matcher.operator.Operator;
+import java.util.Set;
 
-public class OperatorExpression extends NonResolvingExpression<Operator, Object> {
+import org.matcher.operator.Operator;
+import org.matcher.parameter.ParameterBinding;
+
+public class OperatorExpression extends Expression<Object> {
 
     public OperatorExpression(Operator operator) {
-	super(operator);
+	super(operator.getSymbol());
     }
 
     @Override
@@ -36,6 +38,11 @@ public class OperatorExpression extends NonResolvingExpression<Operator, Object>
 
     @Override
     public void setProperty(String property) {
+    }
+
+    @Override
+    public String resolveFromClause(Set<Class<?>> seenReferents) {
+	return "";
     }
 
     @Override

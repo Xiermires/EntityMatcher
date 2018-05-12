@@ -31,12 +31,10 @@ public class NameBasedSelectBuilder<T> extends SelectBuilder<T, NameBasedSelectB
 
     public NameBasedSelectBuilder(Class<T> referent) {
 	super(referent);
-	setData(this);
     }
 
     public NameBasedSelectBuilder(SelectExpression<T> expression) {
 	super(expression);
-	setData(this);
     }
 
     @Override

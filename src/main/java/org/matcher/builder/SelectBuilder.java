@@ -29,28 +29,16 @@ import org.matcher.parameter.ParameterBinding;
 
 public abstract class SelectBuilder<T, E extends SelectBuilder<T, E>> extends ExpressionBuilder<E> {
 
-    private final Class<T> referent;
-    private final String property;
-
     public SelectBuilder(Class<T> referent) {
-	super();
-	this.referent = referent;
-	this.property = null;
+	super(referent, null);
     }
 
     public SelectBuilder(SelectExpression<T> expression) {
-	super();
-	expressions.add(expression);
-	referent = expression.getReferent();
-	property = expression.getProperty();
+	super(expression);
     }
-
-    public Class<T> getReferent() {
-	return referent;
-    }
-
-    public String getProperty() {
-	return property;
+    
+    public SelectBuilder(Class<T> referent, String property) {
+	super(referent, property);
     }
 
     @Override
@@ -60,6 +48,12 @@ public abstract class SelectBuilder<T, E extends SelectBuilder<T, E>> extends Ex
 	final StringBuilder selectClause = new StringBuilder();
 	parseExpressions(selectClause, null, seenReferents, bindings);
 	return new StringBuilder("SELECT ").append(selectClause).toString();
+    }
+
+    @Override
+    @SuppressWarnings("unchecked") // safe
+    public Class<T> getReferent() {
+	return (Class<T>) super.getReferent();
     }
 
     @Override

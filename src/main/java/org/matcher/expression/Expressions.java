@@ -43,6 +43,7 @@ public class Expressions {
     public static final Operator PROPERTY = new Operator("");
     public static final Operator ORDERBY = new Operator("ORDER BY ");
     public static final Operator GROUPBY = new Operator("GROUP BY ");
+    public static final Operator HAVING = new Operator("HAVING ");
     public static final Operator DISTINCT = new Operator("DISTINCT ") {
 	@Override
 	public String apply(String lhs, String rhs) {
@@ -76,9 +77,9 @@ public class Expressions {
     }
 
     private static void negate(ExpressionBuilder<?> builder) {
-	for (Expression<?, ?> expression : builder.getExpressions()) {
-	    if (expression.getOperator() instanceof Negatable) {
-		((Negatable) expression.getOperator()).negate();
+	for (Expression<?> expression : builder.getExpressions()) {
+	    if (expression instanceof Negatable) {
+		((Negatable) expression).negate();
 	    }
 	}
 	builder.getChildren().forEach(node -> negate(node.getData()));

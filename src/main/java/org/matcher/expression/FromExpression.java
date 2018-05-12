@@ -27,12 +27,12 @@ import static org.matcher.expression.Expressions.NONE;
 
 import java.util.Set;
 
-import org.matcher.operator.Operator;
+import org.matcher.parameter.ParameterBinding;
 
-public class FromExpression extends NonResolvingExpression<Operator, Object> {
+public class FromExpression extends Expression<Object> {
 
     public FromExpression(Class<?> referent) {
-	super(NONE);
+	super(NONE.getSymbol());
 	setReferent(referent);
     }
 
@@ -45,6 +45,11 @@ public class FromExpression extends NonResolvingExpression<Operator, Object> {
 	    final String tableName = getTableName(getReferent());
 	    return tableName + " " + toAlias(tableName);
 	}
+	return "";
+    }
+
+    @Override
+    public String resolve(ParameterBinding bindings) {
 	return "";
     }
 }

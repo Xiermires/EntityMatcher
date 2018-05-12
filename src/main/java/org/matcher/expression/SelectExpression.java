@@ -27,15 +27,15 @@ import org.matcher.operator.Operator;
 
 import com.google.common.base.Strings;
 
-public class SelectExpression<T> extends Expression<Operator, Object> {
+public class SelectExpression<T> extends Expression<Object> {
 
     public SelectExpression(Class<T> referent) {
-	super(NONE);
+	super("");
 	setReferent(referent);
     }
 
     public SelectExpression(Class<T> referent, SelectExpression<?> expression) {
-	super(NONE);
+	super("");
 	setReferent(referent);
 	addChild(expression);
     }
@@ -45,29 +45,29 @@ public class SelectExpression<T> extends Expression<Operator, Object> {
     }
 
     public SelectExpression(Operator operator, SelectExpression<?> expression) {
-	super(operator);
+	super(operator.getSymbol());
 	setReferent(expression.getReferent());
 	setProperty(expression.getProperty());
 	addChild(expression);
     }
 
     public SelectExpression(Operator operator, String property) {
-	super(operator);
+	super(operator.getSymbol());
 	setProperty(property);
     }
 
-    public SelectExpression(Operator operator, Class<T> referent, String property) {
+    public SelectExpression(String operator, Class<T> referent, String property) {
 	super(operator);
 	setProperty(property);
 	setReferent(referent);
     }
 
     public SelectExpression(Operator operator) {
-	super(operator);
+	super(operator.getSymbol());
     }
 
     public SelectExpression(String property) {
-	super(NONE);
+	super("");
 	setProperty(property);
     }
 
@@ -80,7 +80,7 @@ public class SelectExpression<T> extends Expression<Operator, Object> {
 
     @Override
     protected String apply(String result) {
-	return getOperator().getSymbol() + result;
+	return getOperator() + result;
     }
 
     @Override

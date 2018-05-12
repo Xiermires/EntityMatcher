@@ -23,12 +23,12 @@ package org.matcher.builder;
 
 import java.util.Set;
 
-import org.matcher.expression.FunctionExpression;
+import org.matcher.expression.SelectExpression;
 import org.matcher.parameter.ParameterBinding;
 
 public abstract class AggregateBuilder<T, E extends AggregateBuilder<T, E>> extends SelectBuilder<T, E> {
 
-    public AggregateBuilder(FunctionExpression<T> expression) {
+    public AggregateBuilder(SelectExpression<T> expression) {
 	super(expression);
     }
 
