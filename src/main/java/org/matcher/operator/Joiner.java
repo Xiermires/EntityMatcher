@@ -21,19 +21,19 @@
  *******************************************************************************/
 package org.matcher.operator;
 
-import org.matcher.builder.BuilderUtils;
+import static org.matcher.builder.BuilderUtils.*;
 
-public class Joiner extends Operator{
+public class Joiner extends Operator {
 
     public Joiner(String joiner) {
-        super(joiner);
+	super(joiner);
     }
 
     public String resolve(//
-    	String table, String alias, String column, //
-    	String joinTable, String joinAlias, String joinColumn) {
+	    String table, String alias, String column, //
+	    String joinTable, String joinAlias, String joinColumn) {
 
-        return table + " " + alias + getSymbol() + joinTable + " " + joinAlias + " ON "
-    	    + BuilderUtils.tableColumn(alias, column) + " = " + BuilderUtils.tableColumn(joinAlias, joinColumn);
+	return table + " " + alias + getSymbol() + joinTable + " " + joinAlias + " ON "
+		+ aliasPlusColumn(alias, column) + " = " + aliasPlusColumn(joinAlias, joinColumn);
     }
 }

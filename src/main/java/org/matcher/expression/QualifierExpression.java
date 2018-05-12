@@ -21,44 +21,37 @@
  *******************************************************************************/
 package org.matcher.expression;
 
+import static org.matcher.builder.BuilderUtils.aliasPlusColumn;
 import static org.matcher.builder.BuilderUtils.getColumnName;
 import static org.matcher.builder.BuilderUtils.getTableName;
-import static org.matcher.builder.BuilderUtils.tableColumn;
 import static org.matcher.builder.BuilderUtils.toAlias;
 
-import java.util.Set;
-
+import org.matcher.operator.NegatableOperator;
 import org.matcher.parameter.ParameterBinding;
-import org.matcher.operator.Qualifier;
 
-public class QualifierExpression<T> extends Expression<Qualifier<T>, T> {
+public class QualifierExpression<T> extends Expression<NegatableOperator, T> {
 
-    public QualifierExpression(Qualifier<T> qualifier, T value) {
+    public QualifierExpression(NegatableOperator qualifier, T value) {
 	super(qualifier, value);
-    }
-
-    @Override
-    public String resolveFromClause(Set<Class<?>> seenReferents) {
-	return resolveReferent(getReferent(), seenReferents);
-    }
-
-    protected String resolveReferent(Class<?> referent, Set<Class<?>> seenReferents) {
-	if (!seenReferents.contains(referent)) {
-	    // update references
-	    seenReferents.add(referent);
-
-	    final String tableName = getTableName(referent);
-	    return tableName + " " + toAlias(tableName);
-	}
-	return "";
     }
 
     @Override
     public String resolve(ParameterBinding bindings) {
 	final String alias = toAlias(getTableName(getReferent()));
 	final String column = getColumnName(getReferent(), getProperty());
+	final String lhs = aliasPlusColumn(alias, column);
+	final String rhs;
 
-	return getOperator().resolve(tableColumn(alias, column), bindings, getValue());
+	if (getValue() == null) {
+	    rhs = nullParameter();
+	} else {
+	    rhs = getOperator().getSymbol() + " " + bindings.createParam(getValue());
+	}
+	return lhs + rhs;
+    }
+
+    private String nullParameter() {
+	return getOperator().isNegated() ? " IS NOT NULL " : " IS NULL ";
     }
 
     @Override

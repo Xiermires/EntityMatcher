@@ -21,17 +21,27 @@
  *******************************************************************************/
 package org.matcher.operator;
 
-public class Selector extends Operator {
+public class NegatableOperator extends Operator implements Negatable {
 
-    public Selector() {
-	super("");
+    private final String affirmed;
+    private final String negated;
+
+    private boolean isNegated;
+
+    public NegatableOperator(String affirmed, String negated) {
+	super(affirmed);
+	this.affirmed = affirmed;
+	this.negated = negated;
+	this.isNegated = false;
     }
 
-    public Selector(String symbol) {
-	super(symbol);
+    @Override
+    public void negate() {
+	setSymbol(isNegated ? affirmed : negated);
+	isNegated = !isNegated;
     }
-    
-    public String resolve(String tableColumn) {
-	return tableColumn;
+
+    public boolean isNegated() {
+	return isNegated;
     }
 }

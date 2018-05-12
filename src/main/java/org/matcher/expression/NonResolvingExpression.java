@@ -21,6 +21,7 @@
  *******************************************************************************/
 package org.matcher.expression;
 
+import java.util.List;
 import java.util.Set;
 
 import org.matcher.parameter.ParameterBinding;
@@ -42,6 +43,16 @@ public abstract class NonResolvingExpression<T extends Operator, V> extends Expr
 
     @Override
     public String resolve(ParameterBinding bindings) {
+	return "";
+    }
+
+    @Override
+    protected String combine(List<String> results) {
+	return "";
+    }
+
+    @Override
+    protected String getResolveSeparator() {
 	return "";
     }
 }

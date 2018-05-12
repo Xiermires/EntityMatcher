@@ -21,13 +21,20 @@
  *******************************************************************************/
 package org.matcher.builder;
 
+
 public class BuilderUtils {
 
     public static String toAlias(String table) {
 	return table == null ? null : table.toLowerCase();
     }
 
-    public static String tableColumn(String table, String column) {
+    public static String aliasPlusColumn(Class<?> referent, String property) {
+	final String alias = toAlias(getTableName(referent));
+	final String column = getColumnName(referent, property);
+	return aliasPlusColumn(alias, column);
+    }
+    
+    public static String aliasPlusColumn(String table, String column) {
 	return table == null && column == null ? null : column == null ? table : table.concat(".").concat(column);
     }
 

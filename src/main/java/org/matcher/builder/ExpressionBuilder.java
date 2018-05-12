@@ -1,3 +1,24 @@
+/*******************************************************************************
+ * Copyright (c) 2018, Xavier Miret Andres <xavier.mires@gmail.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *******************************************************************************/
 package org.matcher.builder;
 
 import static org.matcher.expression.Expressions.closure;
@@ -12,7 +33,7 @@ import org.matcher.expression.OperatorExpression;
 import org.matcher.operator.Operator;
 import org.matcher.parameter.ParameterBinding;
 import org.matcher.util.Arborescence;
-import org.matcher.util.ExpressionIterator;
+import org.matcher.util.ExpressionBuilderIterator;
 
 public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends Arborescence<T> {
 
@@ -59,7 +80,7 @@ public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends 
 	    Set<Class<?>> seenReferents, //
 	    ParameterBinding bindings) {
 
-	final ExpressionIterator<T> it = new ExpressionIterator<>(this);
+	final ExpressionBuilderIterator<T> it = new ExpressionBuilderIterator<>(this);
 	if (it.hasNext()) {
 	    Expression<?, ?> expression = it.next();
 	    if (fromAppender != null) {
@@ -89,43 +110,6 @@ public abstract class ExpressionBuilder<T extends ExpressionBuilder<T>> extends 
 		}
 	    }
 	}
-	
-//	final Iterator<Expression<?, ?>> expressionIterator = getExpressions().iterator();
-//	if (expressionIterator.hasNext()) {
-//	    Expression<?, ?> expression = expressionIterator.next();
-//	    if (fromAppender != null) {
-//		fromAppender.append(expression.resolveFromClause(seenReferents));
-//	    }
-//	    if (appender != null) {
-//		appender.append(expression.resolve(bindings));
-//	    }
-//
-//	    while (expressionIterator.hasNext()) {
-//		expression = expressionIterator.next();
-//
-//		if (appender != null) {
-//		    final String resolve = expression.resolve(bindings);
-//		    if (!resolve.isEmpty()) {
-//			appender.append(getResolveSeparator());
-//			appender.append(resolve);
-//		    }
-//		}
-//
-//		if (fromAppender != null) {
-//		    final String resolveFrom = expression.resolveFromClause(seenReferents);
-//		    if (!resolveFrom.isEmpty()) {
-//			fromAppender.append(getResolveFromSeparator());
-//			fromAppender.append(resolveFrom);
-//		    }
-//		}
-//	    }
-//	}
-//
-//	if (hasChildren()) {
-//	    for (Node<T> child : getChildren()) {
-//		child.getData().parseExpressions(appender, fromAppender, seenReferents, bindings);
-//	    }
-//	}
     }
 
     protected abstract String getResolveFromSeparator();

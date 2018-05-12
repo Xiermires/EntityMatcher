@@ -1,3 +1,24 @@
+/*******************************************************************************
+ * Copyright (c) 2018, Xavier Miret Andres <xavier.mires@gmail.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *******************************************************************************/
 package org.matcher.bean;
 
 import static org.matcher.bean.BeanBasedMatcher.getPropertyName;
@@ -6,11 +27,11 @@ import static org.matcher.bean.BeanBasedMatcher.getReferent;
 import java.util.Collection;
 import java.util.List;
 
-import org.matcher.expression.Expressions;
 import org.matcher.bean.InvokationCapturer.Capture;
+import org.matcher.expression.Expressions;
 import org.matcher.expression.SelectExpression;
 import org.matcher.name.NameBasedExpressions;
-import org.matcher.operator.Selector;
+import org.matcher.operator.Operator;
 
 public class BeanBasedExpressions extends Expressions {
 
@@ -51,18 +72,18 @@ public class BeanBasedExpressions extends Expressions {
 	return createSelectBuilder(DISTINCT, capture);
     }
 
-    private static SelectExpression<?> createSelectExpression(Selector selector, Capture capture) {
+    private static SelectExpression<?> createSelectExpression(Operator selector, Capture capture) {
 	final Class<?> referent = getReferent(capture);
 	final String property = getPropertyName(capture);
 
 	return new SelectExpression<>(selector, referent, property);
     }
 
-    private static <T> BeanBasedSelectBuilder<?> createSelectBuilder(Selector selector, T capture) {
+    private static <T> BeanBasedSelectBuilder<?> createSelectBuilder(Operator selector, T capture) {
 	return createSelectBuilder(selector, BeanBasedMatcher.getLastCapture());
     }
 
-    private static BeanBasedSelectBuilder<?> createSelectBuilder(Selector selector, Capture capture) {
+    private static BeanBasedSelectBuilder<?> createSelectBuilder(Operator selector, Capture capture) {
 	final Class<?> referent = getReferent(capture);
 	final String property = getPropertyName(capture);
 

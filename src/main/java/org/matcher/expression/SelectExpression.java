@@ -21,21 +21,13 @@
  *******************************************************************************/
 package org.matcher.expression;
 
-import static org.matcher.builder.BuilderUtils.getColumnName;
-import static org.matcher.builder.BuilderUtils.getTableName;
-import static org.matcher.builder.BuilderUtils.tableColumn;
-import static org.matcher.builder.BuilderUtils.toAlias;
 import static org.matcher.expression.Expressions.NONE;
 
-import java.util.Iterator;
-
-import org.matcher.util.Node;
-import org.matcher.parameter.ParameterBinding;
-import org.matcher.operator.Selector;
+import org.matcher.operator.Operator;
 
 import com.google.common.base.Strings;
 
-public class SelectExpression<T> extends NonResolvingExpression<Selector, Object> {
+public class SelectExpression<T> extends Expression<Operator, Object> {
 
     public SelectExpression(Class<T> referent) {
 	super(NONE);
@@ -52,25 +44,25 @@ public class SelectExpression<T> extends NonResolvingExpression<Selector, Object
 	this(NONE, expression);
     }
 
-    public SelectExpression(Selector operator, SelectExpression<?> expression) {
+    public SelectExpression(Operator operator, SelectExpression<?> expression) {
 	super(operator);
 	setReferent(expression.getReferent());
 	setProperty(expression.getProperty());
 	addChild(expression);
     }
 
-    public SelectExpression(Selector operator, String property) {
+    public SelectExpression(Operator operator, String property) {
 	super(operator);
 	setProperty(property);
     }
 
-    public SelectExpression(Selector operator, Class<T> referent, String property) {
+    public SelectExpression(Operator operator, Class<T> referent, String property) {
 	super(operator);
 	setProperty(property);
 	setReferent(referent);
     }
 
-    public SelectExpression(Selector operator) {
+    public SelectExpression(Operator operator) {
 	super(operator);
     }
 
@@ -87,41 +79,13 @@ public class SelectExpression<T> extends NonResolvingExpression<Selector, Object
     }
 
     @Override
-    public String resolve(ParameterBinding unused) {
-	final StringBuilder sb = new StringBuilder();
-	if (hasChildren()) {
-	    final Iterator<Node<Expression<Selector, Object>>> it = getChildren().iterator();
-	    final Expression<Selector, Object> first = it.next().getData();
-	    sb.append(resolveExpression(first));
-
-	    while (it.hasNext()) {
-		sb.append(getResolveSeparator());
-		sb.append(resolveExpression(it.next().getData()));
-	    }
-	    return getOperator().resolve(sb.toString());
-	} else {
-	    return resolveExpression(this);
-	}
+    protected String apply(String result) {
+	return getOperator().getSymbol() + result;
     }
 
+    @Override
     protected String getResolveSeparator() {
 	return ", ";
-    }
-
-    private String resolveExpression(Expression<Selector, Object> expression) {
-	final StringBuilder sb = new StringBuilder();
-	if (expression.hasChildren()) {
-	    for (Node<Expression<Selector, Object>> child : expression.getChildren()) {
-		final Expression<Selector, Object> data = child.getData();
-		sb.append(resolveExpression(data));
-	    }
-	    return expression.getOperator().resolve(sb.toString());
-	} else {
-	    final String table = getTableName(expression.getReferent());
-	    final String alias = toAlias(table);
-	    final String column = getColumnName(expression.getReferent(), expression.getProperty());
-	    return expression.getOperator().resolve(tableColumn(alias, column));
-	}
     }
 
     @Override

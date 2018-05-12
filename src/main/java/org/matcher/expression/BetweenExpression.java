@@ -19,36 +19,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *******************************************************************************/
-package org.matcher.operator;
+package org.matcher.expression;
 
+import static org.matcher.builder.BuilderUtils.getColumnName;
+import static org.matcher.builder.BuilderUtils.getTableName;
+import static org.matcher.builder.BuilderUtils.aliasPlusColumn;
+import static org.matcher.builder.BuilderUtils.toAlias;
+
+import org.matcher.expression.Expressions.Boundaries;
+import org.matcher.operator.NegatableOperator;
 import org.matcher.parameter.ParameterBinding;
 
+public class BetweenExpression extends QualifierExpression<Boundaries> {
 
-public class Qualifier<T> extends Operator implements Negatable {
-    
-    private final String affirmed;
-    private final String negated;
-    
-    private boolean isNegated;
-
-    public Qualifier(String affirmed, String negated) {
-        super(affirmed);
-        this.affirmed = affirmed;
-        this.negated = negated;
-        this.isNegated = false;
-    }
-    
-    public String resolve(String tableColumn, ParameterBinding bindings, T param) {
-        return tableColumn + getSymbol() + bindings.createParam(param);
+    public BetweenExpression(NegatableOperator qualifier, Boundaries value) {
+	super(qualifier, value);
     }
 
     @Override
-    public void negate() {
-        setSymbol(isNegated ? affirmed : negated);
-        isNegated = !isNegated;
-    }
-    
-    public boolean isNegated() {
-	return isNegated;
+    public String resolve(ParameterBinding bindings) {
+	final String alias = toAlias(getTableName(getReferent()));
+	final String column = getColumnName(getReferent(), getProperty());
+	final String lhs = aliasPlusColumn(alias, column);
+	String rhs = getOperator().getSymbol() + //
+		bindings.createParam(getValue().min) + " AND " + //
+		bindings.createParam(getValue().max);
+	
+	return lhs + rhs;
     }
 }

@@ -22,7 +22,6 @@
 package org.matcher.operator;
 
 public class Operator {
-
     private String symbol;
 
     public Operator(String symbol) {
@@ -30,13 +29,17 @@ public class Operator {
     }
 
     public String getSymbol() {
-        return symbol;
+	return symbol;
     }
 
     public void setSymbol(String symbol) {
-        this.symbol = symbol;
+	this.symbol = symbol;
     }
-    
+
+    public String apply(String lhs, String rhs) {
+	return (lhs == null ? "" : lhs) + symbol + (rhs == null ? "" : rhs);
+    }
+
     @Override
     public String toString() {
 	return symbol;

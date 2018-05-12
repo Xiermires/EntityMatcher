@@ -24,6 +24,7 @@ package org.matcher.name;
 import java.util.Collection;
 
 import org.matcher.builder.ExpressionBuilder;
+import org.matcher.expression.BetweenExpression;
 import org.matcher.expression.Expression;
 import org.matcher.expression.Expressions;
 import org.matcher.expression.FunctionExpression;
@@ -65,8 +66,8 @@ public class NameBasedExpressions extends Expressions {
 	return new NameBasedSelectBuilder<>(referent).and(selection(property, others));
     }
 
-    public static <T> NameBasedSelectBuilder<T> selection(FunctionExpression<T> f1) {
-	return new NameBasedSelectBuilder<>(new FunctionExpression<>(NONE, f1));
+    public static <T> NameBasedSelectBuilder<T> selection(SelectExpression<T> f1) {
+	return new NameBasedSelectBuilder<>(f1);
     }
 
     public static <T> NameBasedSelectBuilder<T> selection(FunctionExpression<T> f1, FunctionExpression<T> f2) {
@@ -153,7 +154,7 @@ public class NameBasedExpressions extends Expressions {
 	return new FunctionExpression<>(COUNT, referent, property);
     }
 
-    public static FunctionExpression<?> count(FunctionExpression<?> other) {
+    public static FunctionExpression<?> count(SelectExpression<?> other) {
 	final FunctionExpression<?> count = new FunctionExpression<>(COUNT);
 	count.addChild(other);
 	count.setReferent(other.getReferent());
@@ -161,12 +162,12 @@ public class NameBasedExpressions extends Expressions {
 	return count;
     }
 
-    public static FunctionExpression<?> distinct(String property) {
-	return new FunctionExpression<>(DISTINCT, property);
+    public static SelectExpression<?> distinct(String property) {
+	return distinct(null, property);
     }
 
-    public static <T> FunctionExpression<T> distinct(Class<T> referent, String property) {
-	return new FunctionExpression<>(DISTINCT, referent, property);
+    public static <T> SelectExpression<T> distinct(Class<T> referent, String property) {
+	return new SelectExpression<T>(DISTINCT, referent, property);
     }
 
     // group by
@@ -198,7 +199,7 @@ public class NameBasedExpressions extends Expressions {
 	}
 	return new NameBasedAggregateBuilder<>(expression);
     }
-    
+
     /**
      * A group by expression, where each property belongs to the leading query referent.
      * <p>
@@ -218,7 +219,8 @@ public class NameBasedExpressions extends Expressions {
      * <p>
      * i.e. {@code groupBy("foo", "bar")} translates as {@code GROUP BY ?.foo, ?.bar}.
      */
-    public static <T> NameBasedAggregateBuilder<T> orderBy(FunctionExpression<?> function, FunctionExpression<?>... others) {
+    public static <T> NameBasedAggregateBuilder<T> orderBy(FunctionExpression<?> function,
+	    FunctionExpression<?>... others) {
 	final FunctionExpression<T> expression = new FunctionExpression<>(ORDERBY);
 	expression.addChild(function);
 	for (FunctionExpression<?> other : others) {
@@ -339,21 +341,21 @@ public class NameBasedExpressions extends Expressions {
      * i.e. {@code between(1, 3)} translates as {@code ?.? BETWEEN 1 AND 3}.
      */
     public static NameBasedFromWhereBuilder between(Double v1, Double v2) {
-	return new NameBasedFromWhereBuilder(new QualifierExpression<Boundaries>(BETWEEN(), new Boundaries(v1, v2)));
+	return new NameBasedFromWhereBuilder(new BetweenExpression(BETWEEN, new Boundaries(v1, v2)));
     }
 
     /**
      * see {@link #between(Double, Double)}
      */
     public static NameBasedFromWhereBuilder between(Long v1, Long v2) {
-	return new NameBasedFromWhereBuilder(new QualifierExpression<Boundaries>(BETWEEN(), new Boundaries(v1, v2)));
+	return new NameBasedFromWhereBuilder(new BetweenExpression(BETWEEN, new Boundaries(v1, v2)));
     }
 
     /**
      * see {@link #between(Double, Double)}
      */
     public static NameBasedFromWhereBuilder between(Integer v1, Integer v2) {
-	return new NameBasedFromWhereBuilder(new QualifierExpression<Boundaries>(BETWEEN(), new Boundaries(v1, v2)));
+	return new NameBasedFromWhereBuilder(new BetweenExpression(BETWEEN, new Boundaries(v1, v2)));
     }
 
 }

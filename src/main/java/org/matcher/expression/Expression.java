@@ -21,11 +21,19 @@
  *******************************************************************************/
 package org.matcher.expression;
 
+import static org.matcher.builder.BuilderUtils.aliasPlusColumn;
+import static org.matcher.builder.BuilderUtils.getTableName;
+import static org.matcher.builder.BuilderUtils.toAlias;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
-import org.matcher.util.Arborescence;
-import org.matcher.parameter.ParameterBinding;
 import org.matcher.operator.Operator;
+import org.matcher.parameter.ParameterBinding;
+import org.matcher.util.Arborescence;
+import org.matcher.util.Node;
 
 public abstract class Expression<T extends Operator, V> extends Arborescence<Expression<T, V>> {
 
@@ -47,12 +55,66 @@ public abstract class Expression<T extends Operator, V> extends Arborescence<Exp
     /**
      * Resolves to a from expression or to an empty string if it can't be resolved.
      */
-    public abstract String resolveFromClause(Set<Class<?>> seenReferents);
+    public String resolveFromClause(Set<Class<?>> seenReferents) {
+	return resolveReferent(getReferent(), seenReferents);
+    }
+
+    protected String resolveReferent(Class<?> referent, Set<Class<?>> seenReferents) {
+	if (!seenReferents.contains(referent)) {
+	    // update references
+	    seenReferents.add(referent);
+
+	    final String tableName = getTableName(referent);
+	    return tableName + " " + toAlias(tableName);
+	}
+	return "";
+    }
 
     /**
      * Resolves to an expression or to an empty string if it can't be resolved.
      */
-    public abstract String resolve(ParameterBinding bindings);
+    public String resolve(ParameterBinding bindings) {
+	if (hasChildren()) {
+	    final List<String> results = new ArrayList<>();
+	    for (Node<Expression<T, V>> child : getChildren()) {
+		results.add(child.getData().resolve(bindings));
+	    }
+	    return combine(results);
+	} else {
+	    return apply(aliasPlusColumn(getReferent(), getProperty()));
+	}
+    }
+
+    protected String combine(List<String> results) {
+	final StringBuilder sb = new StringBuilder();
+	boolean appendSeparator = false;
+	final Iterator<String> it = results.iterator();
+	String next = it.next();
+	if (next != null && !next.isEmpty()) {
+	    sb.append(next);
+	    appendSeparator = true;
+	}
+	while (it.hasNext()) {
+	    if (appendSeparator) {
+		sb.append(getResolveSeparator());
+		appendSeparator = false;
+	    }
+	    next = it.next();
+	    if (next != null && !next.isEmpty()) {
+		sb.append(next);
+		appendSeparator = true;
+	    }
+	}
+	return apply(sb.toString());
+    }
+
+    protected String apply(String result) {
+	return result;
+    }
+
+    protected String getResolveSeparator() {
+	return "";
+    }
 
     public T getOperator() {
 	return operator;

@@ -1,6 +1,25 @@
+/*******************************************************************************
+ * Copyright (c) 2018, Xavier Miret Andres <xavier.mires@gmail.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *******************************************************************************/
 package org.matcher.expression;
-
-import java.util.Collection;
 
 import org.matcher.builder.ExpressionBuilder;
 import org.matcher.builder.SelectBuilder;
@@ -8,14 +27,12 @@ import org.matcher.name.NameBasedSelectBuilder;
 import org.matcher.operator.Functor;
 import org.matcher.operator.Joiner;
 import org.matcher.operator.Negatable;
+import org.matcher.operator.NegatableOperator;
 import org.matcher.operator.Operator;
-import org.matcher.operator.Qualifier;
-import org.matcher.operator.Selector;
-import org.matcher.parameter.ParameterBinding;
 
 public class Expressions {
 
-    public static final Selector NONE = new Selector();
+    public static final Operator NONE = new Operator("");
     public static final Operator OR = new Operator(" OR ");
     public static final Operator AND = new Operator(" AND ");
     public static final Operator OPEN = new Operator(" ( ");
@@ -23,31 +40,13 @@ public class Expressions {
 
     // select / functions / aggregation
 
-    public static final Selector PROPERTY = new Selector() {
+    public static final Operator PROPERTY = new Operator("");
+    public static final Operator ORDERBY = new Operator("ORDER BY ");
+    public static final Operator GROUPBY = new Operator("GROUP BY ");
+    public static final Operator DISTINCT = new Operator("DISTINCT ") {
 	@Override
-	public String resolve(String string) {
-	    return string;
-	}
-    };
-
-    public static final Selector ORDERBY = new Selector("ORDER BY ") {
-	@Override
-	public String resolve(String string) {
-	    return getSymbol() + string;
-	}
-    };
-    
-    public static final Selector GROUPBY = new Selector("GROUP BY ") {
-	@Override
-	public String resolve(String string) {
-	    return getSymbol() + string;
-	}
-    };
-
-    public static final Selector DISTINCT = new Selector("DISTINCT ") {
-	@Override
-	public String resolve(String string) {
-	    return getSymbol() + string;
+	public String apply(String lhs, String rhs) {
+	    return getSymbol() + lhs;
 	}
     };
 
@@ -57,7 +56,7 @@ public class Expressions {
     public static final Functor SUM = new Functor("SUM");
     public static final Functor COUNT = new Functor("COUNT");
 
-    public static SelectBuilder<?, ?> count(SelectBuilder<?,  ?> otherExpression) {
+    public static SelectBuilder<?, ?> count(SelectBuilder<?, ?> otherExpression) {
 	final SelectExpression<?> count = new SelectExpression<>(COUNT);
 	count.setReferent(otherExpression.getReferent());
 	count.setProperty(otherExpression.getProperty());
@@ -106,36 +105,26 @@ public class Expressions {
 
     // expressions
 
-    public static final Joiner INNER_JOIN() {
-	return new Joiner(" INNER JOIN ");
+    public static final Joiner INNER_JOIN = new Joiner(" INNER JOIN ");
+
+    public static final <T> NegatableOperator LIKE(Class<T> type) {
+	return new NegatableOperator(" LIKE ", " NOT LIKE ");
     }
 
-    public static final <T> Qualifier<T> LIKE(Class<T> type) {
-	return new Qualifier<T>(" LIKE ", " NOT LIKE ");
+    public static final NegatableOperator EQ(Class<?> type) {
+	return new NegatableOperator(" = ", " != ");
     }
 
-    public static final <T> Qualifier<T> EQ(Class<T> type) {
-	return new Qualifier<T>(" = ", " != ") {
-	    @Override
-	    public String resolve(String lhs, ParameterBinding bindings, T param) {
-		if (param == null) {
-		    return lhs + (isNegated() ? " IS NOT NULL " : " IS NULL ");
-		} else
-		    return super.resolve(lhs, bindings, param);
-	    }
-	};
+    public static final <T extends Number> NegatableOperator GT(Class<? extends T> type) {
+	return new NegatableOperator(" > ", " < ");
     }
 
-    public static final <T extends Number> Qualifier<T> GT(Class<? extends T> type) {
-	return new Qualifier<T>(" > ", " < ");
+    public static final <T extends Number> NegatableOperator LT(Class<T> type) {
+	return new NegatableOperator(" < ", " > ");
     }
 
-    public static final <T extends Number> Qualifier<T> LT(Class<T> type) {
-	return new Qualifier<T>(" < ", " > ");
-    }
-
-    public static final Qualifier<Collection<?>> IN() {
-	return new Qualifier<Collection<?>>(" IN ", " NOT IN ");
+    public static final NegatableOperator IN() {
+	return new NegatableOperator(" IN ", " NOT IN ");
     }
 
     public static class Boundaries {
@@ -153,12 +142,5 @@ public class Expressions {
 	}
     }
 
-    public static final Qualifier<Boundaries> BETWEEN() {
-	return new Qualifier<Boundaries>(" BETWEEN ", " NOT BETWEEN ") {
-	    @Override
-	    public String resolve(String lhs, ParameterBinding bindings, Boundaries param) {
-		return lhs + getSymbol() + bindings.createParam(param.min) + " AND " + bindings.createParam(param.max);
-	    }
-	};
-    };
+    public static final NegatableOperator BETWEEN = new NegatableOperator(" BETWEEN ", " NOT BETWEEN ");
 }

@@ -21,17 +21,14 @@
  *******************************************************************************/
 package org.matcher.expression;
 
-import static org.matcher.builder.BuilderUtils.getColumnName;
-import static org.matcher.builder.BuilderUtils.getTableName;
-import static org.matcher.builder.BuilderUtils.tableColumn;
-import static org.matcher.builder.BuilderUtils.toAlias;
+import static org.matcher.builder.BuilderUtils.aliasPlusColumn;
 
 import java.util.Set;
 
 import javax.persistence.Query;
 
+import org.matcher.operator.NegatableOperator;
 import org.matcher.parameter.ParameterBinding;
-import org.matcher.operator.Qualifier;
 
 /**
  * Where clause inner join.
@@ -52,15 +49,9 @@ public class JoinQualifierExpression extends QualifierExpression<String> {
     
     private final Class<?> otherReferent;
 
-    public JoinQualifierExpression(Qualifier<String> qualifier, Class<?> otherReferent, String otherProperty) {
-	super(qualifier, joinTableColumn(otherReferent, otherProperty));
+    public JoinQualifierExpression(NegatableOperator qualifier, Class<?> otherReferent, String otherProperty) {
+	super(qualifier, aliasPlusColumn(otherReferent, otherProperty));
 	this.otherReferent = otherReferent;
-    }
-
-    private static String joinTableColumn(Class<?> otherReferent, String otherProperty) {
-	final String alias = toAlias(getTableName(otherReferent));
-	final String column = getColumnName(otherReferent, otherProperty);
-	return tableColumn(alias, column);
     }
 
     @Override
