@@ -29,14 +29,14 @@ import java.util.Iterator;
 import org.matcher.builder.ExpressionBuilder;
 import org.matcher.expression.Expression;
 
-public class ExpressionBuilderIterator<E extends ExpressionBuilder<E>> implements Iterator<Expression<?>> {
+public class ExpressionBuilderIterator<E extends ExpressionBuilder<E>> implements Iterator<Expression> {
 
     private final Deque<Iterator<Node<E>>> stack = new ArrayDeque<>();
 
-    private Iterator<Expression<?>> currentExpressions = null;
+    private Iterator<Expression> currentExpressions = null;
     private Iterator<Node<E>> currentChildren = null;
     private ExpressionBuilder<E> nextNode = null;
-    private Expression<?> next = null;
+    private Expression next = null;
 
     public ExpressionBuilderIterator(ExpressionBuilder<E> node) {
 	this.nextNode = node;
@@ -75,8 +75,8 @@ public class ExpressionBuilderIterator<E extends ExpressionBuilder<E>> implement
     }
 
     @Override
-    public Expression<?> next() {
-	final Expression<?> current = next;
+    public Expression next() {
+	final Expression current = next;
 	advance();
 	return current;
     }

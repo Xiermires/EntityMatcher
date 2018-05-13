@@ -41,6 +41,7 @@ import static org.matcher.name.NameBasedExpressions.distinct;
 import static org.matcher.name.NameBasedExpressions.eq;
 import static org.matcher.name.NameBasedExpressions.groupBy;
 import static org.matcher.name.NameBasedExpressions.gt;
+import static org.matcher.name.NameBasedExpressions.having;
 import static org.matcher.name.NameBasedExpressions.in;
 import static org.matcher.name.NameBasedExpressions.like;
 import static org.matcher.name.NameBasedExpressions.lt;
@@ -328,24 +329,26 @@ public class NameBasedEntityMatcherTest {
 	    min = Math.min(t.getFoo(), min);
 	}
     }
-    
+
     @Test
     public void testOrderByFunction() {
-	final List<String> tos = matcher.find(String.class, selection(TestOther.class, "bar"), groupBy("bar").and(orderBy(count("bar"))));
+	final List<String> tos = matcher.find(String.class, selection(TestOther.class, "bar"),
+		groupBy("bar").and(orderBy(count("bar"))));
 	assertThat(tos.size(), is(2));
 	assertThat(tos, contains("Hello", "Snake"));
     }
-    
-//    @Test
-//    public void testHavingCount() {
-//	final List<String> tos = matcher.find(String.class, selection(TestOther.class, "bar"), groupBy("bar").and(having(count("bar"), gt(2))));
-//	assertThat(tos.size(), is(2));
-//	assertThat(tos, contains("Hello", "Snake"));
-//    }
+
+    @Test
+    public void testHavingCount() {
+	final List<String> tos = matcher.find(String.class, selection(TestOther.class, "bar"),
+		groupBy("bar").and(having(count("bar"), gt(2))));
+	assertThat(tos.size(), is(2));
+	assertThat(tos, contains("Hello", "Snake"));
+    }
 
     @Test
     public void tryMatchingSignatures() {
-	NameBasedFromWhereBuilder builder = matching("bar", like("Hell%")).//
+	NameBasedWhereBuilder builder = matching("bar", like("Hell%")).//
 		and(TestOther.class, "bar", like("Hell%").or(like("Bye"))).//
 		or("foo", gt(5).//
 			and(matching(TestOther.class, "bar")));

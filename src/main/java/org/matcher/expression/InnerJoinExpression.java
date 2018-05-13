@@ -26,12 +26,10 @@ import static org.matcher.builder.BuilderUtils.getColumnName;
 import static org.matcher.builder.BuilderUtils.getTableName;
 import static org.matcher.builder.BuilderUtils.toAlias;
 
-import java.util.Set;
-
 import org.matcher.operator.Joiner;
 import org.matcher.parameter.ParameterBinding;
 
-public class InnerJoinExpression extends Expression<Object> {
+public class InnerJoinExpression extends Expression {
 
     private final Class<?> otherReferent;
     private final String otherProperty;
@@ -43,7 +41,7 @@ public class InnerJoinExpression extends Expression<Object> {
     }
 
     @Override
-    public String resolveFromClause(Set<Class<?>> seenReferents) {
+    public String resolve(ParameterBinding bindings) {
 	final String table = getTableName(getReferent());
 	final String alias = toAlias(table);
 	final String column = getColumnName(getReferent(), getProperty());
@@ -54,10 +52,5 @@ public class InnerJoinExpression extends Expression<Object> {
 
 	return table + " " + alias + getOperator() + joinTable + " " + joinAlias + " ON "
 		+ aliasPlusColumn(alias, column) + " = " + aliasPlusColumn(joinAlias, joinColumn);
-    }
-
-    @Override
-    public String resolve(ParameterBinding bindings) {
-	return "";
     }
 }

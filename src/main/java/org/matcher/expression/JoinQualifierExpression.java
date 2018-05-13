@@ -23,8 +23,6 @@ package org.matcher.expression;
 
 import static org.matcher.builder.BuilderUtils.aliasPlusColumn;
 
-import java.util.Set;
-
 import javax.persistence.Query;
 
 import org.matcher.operator.NegatableOperator;
@@ -35,7 +33,7 @@ import org.matcher.parameter.ParameterBinding;
  */
 public class JoinQualifierExpression extends QualifierExpression<String> {
 
-    private static final ParameterBinding joinBindings = new ParameterBinding() {
+    private static final ParameterBinding transparentBindings = new ParameterBinding() {
 	@Override
 	public String createParam(Object o) {
 	    return (String) o;
@@ -46,7 +44,7 @@ public class JoinQualifierExpression extends QualifierExpression<String> {
 	    throw new UnsupportedOperationException("Cannot bind.");
 	}
     };
-    
+
     private final Class<?> otherReferent;
 
     public JoinQualifierExpression(NegatableOperator qualifier, Class<?> otherReferent, String otherProperty) {
@@ -54,20 +52,12 @@ public class JoinQualifierExpression extends QualifierExpression<String> {
 	this.otherReferent = otherReferent;
     }
 
-    @Override
-    public String resolveFromClause(Set<Class<?>> seenReferents) {
-	final StringBuilder sb = new StringBuilder();
-	final String main = super.resolveFromClause(seenReferents);
-	if (main != null && !main.isEmpty()) {
-	    sb.append(main);
-	    sb.append(", ");
-	}
-	sb.append(resolveReferent(otherReferent, seenReferents));
-	return sb.toString();
+    public Class<?> getOtherReferent() {
+	return otherReferent;
     }
 
     @Override
     public String resolve(ParameterBinding bindings) {
-	return super.resolve(joinBindings);
+	return super.resolve(transparentBindings);
     }
 }

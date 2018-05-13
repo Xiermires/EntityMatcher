@@ -36,7 +36,7 @@ public abstract class SelectBuilder<T, E extends SelectBuilder<T, E>> extends Ex
     public SelectBuilder(SelectExpression<T> expression) {
 	super(expression);
     }
-    
+
     public SelectBuilder(Class<T> referent, String property) {
 	super(referent, property);
     }
@@ -46,24 +46,20 @@ public abstract class SelectBuilder<T, E extends SelectBuilder<T, E>> extends Ex
 	initializeBindings();
 
 	final StringBuilder selectClause = new StringBuilder();
-	parseExpressions(selectClause, null, seenReferents, bindings);
+	parseExpressions(selectClause, bindings);
 	return new StringBuilder("SELECT ").append(selectClause).toString();
     }
 
     @Override
-    @SuppressWarnings("unchecked") // safe
-    public Class<T> getReferent() {
-	return (Class<T>) super.getReferent();
+    @SuppressWarnings("unchecked")
+    // safe
+    public Class<T> getLeadingReferent() {
+	return (Class<T>) super.getLeadingReferent();
     }
 
     @Override
     protected String getResolveFromSeparator() {
 	return "";
-    }
-
-    @Override
-    protected String getResolveSeparator() {
-	return ", ";
     }
 
     @Override

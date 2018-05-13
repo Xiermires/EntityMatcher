@@ -25,6 +25,7 @@ import static org.matcher.expression.Expressions.closure;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.Set;
 
 import org.matcher.expression.Expression;
@@ -36,45 +37,68 @@ import org.matcher.util.ExpressionBuilderIterator;
 
 public abstract class ExpressionBuilder<Builder extends ExpressionBuilder<Builder>> extends Arborescence<Builder> {
 
-    private Class<?> referent;
-    private String property;
+    private Class<?> leadingReferent;
+    private String leadingProperty;
 
-    private final Deque<Expression<?>> expressions = new ArrayDeque<>();
+    private final Deque<Expression> expressions = new ArrayDeque<>();
 
-    protected ExpressionBuilder(Class<?> referent) {
-	this.referent = referent;
-	this.property = null;
-	setData(getThis());
+    protected ExpressionBuilder() {
+	this(null, null);
     }
 
-    protected ExpressionBuilder(Expression<?> expression) {
+    protected ExpressionBuilder(Class<?> referent) {
+	this(referent, null);
+    }
+
+    protected ExpressionBuilder(Expression expression) {
+	this(expression.getReferent(), expression.getProperty());
 	expressions.add(expression);
-	this.referent = expression.getReferent();
-	this.property = expression.getProperty();
-	setData(getThis());
     }
 
     protected ExpressionBuilder(Class<?> referent, String property) {
-	this.referent = referent;
-	this.property = property;
+	this.leadingReferent = referent;
+	this.leadingProperty = property;
 	setData(getThis());
     }
 
     protected abstract Builder getThis();
 
-    public Class<?> getReferent() {
-	return referent;
+    public Class<?> getLeadingReferent() {
+	return leadingReferent;
     }
 
-    public String getProperty() {
-	return property;
+    public String getLeadingProperty() {
+	return leadingProperty;
     }
 
     /**
      * Gets the expressions assigned to this builder.
      */
-    public Deque<Expression<?>> getExpressions() {
+    public Deque<Expression> getExpressions() {
 	return expressions;
+    }
+
+    private Set<Class<?>> allReferents = null;
+
+    /**
+     * Gets the expressions assigned to this builder.
+     */
+    public Set<Class<?>> getReferents() {
+	if (allReferents == null) {
+	    allReferents = new HashSet<>();
+	    if (hasChildren()) {
+		getChildren().forEach(child -> allReferents.addAll(child.getData().getReferents()));
+	    }
+	    if (getLeadingReferent() != null) {
+		allReferents.add(getLeadingReferent());
+	    }
+	    for (Expression expression : getExpressions()) {
+		if (expression.getReferent() != null) {
+		    allReferents.add(expression.getReferent());
+		}
+	    }
+	}
+	return allReferents;
     }
 
     /**
@@ -105,37 +129,16 @@ public abstract class ExpressionBuilder<Builder extends ExpressionBuilder<Builde
     public abstract String build(Set<Class<?>> seenReferents, ParameterBinding bindings);
 
     protected void parseExpressions(StringBuilder appender, //
-	    StringBuilder fromAppender, //
-	    Set<Class<?>> seenReferents, //
 	    ParameterBinding bindings) {
 
 	final ExpressionBuilderIterator<Builder> it = new ExpressionBuilderIterator<>(this);
-	if (it.hasNext()) {
-	    Expression<?> expression = it.next();
-	    if (fromAppender != null) {
-		fromAppender.append(expression.resolveFromClause(seenReferents));
-	    }
+	while (it.hasNext()) {
+	    final Expression expression = it.next();
+
 	    if (appender != null) {
-		appender.append(expression.resolve(bindings));
-	    }
-
-	    while (it.hasNext()) {
-		expression = it.next();
-
-		if (appender != null) {
-		    final String resolve = expression.resolve(bindings);
-		    if (!resolve.isEmpty()) {
-			appender.append(getResolveSeparator());
-			appender.append(resolve);
-		    }
-		}
-
-		if (fromAppender != null) {
-		    final String resolveFrom = expression.resolveFromClause(seenReferents);
-		    if (!resolveFrom.isEmpty()) {
-			fromAppender.append(getResolveFromSeparator());
-			fromAppender.append(resolveFrom);
-		    }
+		final String resolve = expression.resolve(bindings);
+		if (!resolve.isEmpty()) {
+		    appender.append(resolve);
 		}
 	    }
 	}
@@ -143,11 +146,9 @@ public abstract class ExpressionBuilder<Builder extends ExpressionBuilder<Builde
 
     protected abstract String getResolveFromSeparator();
 
-    protected abstract String getResolveSeparator();
-
     public void overwriteNullReferenceAndProperties(Class<?> referent, String property) {
 
-	for (Expression<?> expression : getExpressions()) {
+	for (Expression expression : getExpressions()) {
 	    expression.overwriteNullReferenceAndProperties(referent, property);
 	}
 	getChildren().forEach(node -> node.getData().overwriteNullReferenceAndProperties(referent, property));
@@ -158,7 +159,7 @@ public abstract class ExpressionBuilder<Builder extends ExpressionBuilder<Builde
 	    getChildren().forEach(c -> c.getData().initializeBindings());
 	}
 	if (!getExpressions().isEmpty()) {
-	    overwriteNullReferenceAndProperties(getReferent(), getProperty());
+	    overwriteNullReferenceAndProperties(getLeadingReferent(), getLeadingProperty());
 	}
     }
 
@@ -169,13 +170,13 @@ public abstract class ExpressionBuilder<Builder extends ExpressionBuilder<Builde
 	    Operator operator) {
 
 	if (operator != null) {
-	    other.getExpressions().addFirst(new OperatorExpression(operator));
+	    other.getExpressions().addFirst(new OperatorExpression(operator.getSymbol()));
 	}
 	if (referent != null) {
-	    this.referent = referent;
+	    this.leadingReferent = referent;
 	}
 	if (property != null) {
-	    this.property = property;
+	    this.leadingProperty = property;
 	}
 	addChild(other);
 	return getThis();

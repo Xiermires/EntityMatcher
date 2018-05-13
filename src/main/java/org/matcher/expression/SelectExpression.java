@@ -27,7 +27,7 @@ import org.matcher.operator.Operator;
 
 import com.google.common.base.Strings;
 
-public class SelectExpression<T> extends Expression<Object> {
+public class SelectExpression<T> extends Expression {
 
     public SelectExpression(Class<T> referent) {
 	super("");
@@ -81,11 +81,6 @@ public class SelectExpression<T> extends Expression<Object> {
     @Override
     protected String apply(String result) {
 	return getOperator() + result;
-    }
-
-    @Override
-    protected String getResolveSeparator() {
-	return ", ";
     }
 
     @Override

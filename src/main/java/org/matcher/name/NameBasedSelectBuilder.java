@@ -21,7 +21,7 @@
  *******************************************************************************/
 package org.matcher.name;
 
-import static org.matcher.name.NameBasedExpressions.selection;
+import static org.matcher.name.NameBasedExpressions.*;
 
 import org.matcher.builder.SelectBuilder;
 import org.matcher.expression.FunctionExpression;
@@ -48,7 +48,9 @@ public class NameBasedSelectBuilder<T> extends SelectBuilder<T, NameBasedSelectB
     }
 
     public NameBasedSelectBuilder<T> and(FunctionExpression<?> expression, FunctionExpression<?>... others) {
-	addChild(selection(expression, others));
+	final NameBasedSelectBuilder<T> builder = selection(expression, others);
+	builder.getExpressions().addFirst(COMMA);
+	addChild(builder);
 	return this;
     }
 }

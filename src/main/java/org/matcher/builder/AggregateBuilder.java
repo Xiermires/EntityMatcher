@@ -21,9 +21,12 @@
  *******************************************************************************/
 package org.matcher.builder;
 
+import static org.matcher.expression.Expressions.SPACE;
+
 import java.util.Set;
 
 import org.matcher.expression.SelectExpression;
+import org.matcher.operator.Operator;
 import org.matcher.parameter.ParameterBinding;
 
 public abstract class AggregateBuilder<T, E extends AggregateBuilder<T, E>> extends SelectBuilder<T, E> {
@@ -37,12 +40,12 @@ public abstract class AggregateBuilder<T, E extends AggregateBuilder<T, E>> exte
 	initializeBindings();
 
 	final StringBuilder aggregateClause = new StringBuilder();
-	parseExpressions(aggregateClause, null, seenReferents, bindings);
+	parseExpressions(aggregateClause, bindings);
 	return new StringBuilder().append(aggregateClause).toString();
     }
-
+    
     @Override
-    protected String getResolveSeparator() {
-	return " ";
+    protected Operator getAndOperator() {
+	return SPACE;
     }
 }

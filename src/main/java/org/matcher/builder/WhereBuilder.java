@@ -24,23 +24,31 @@ package org.matcher.builder;
 import static org.matcher.expression.Expressions.AND;
 import static org.matcher.expression.Expressions.OR;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 import org.matcher.expression.Expression;
+import org.matcher.expression.JoinQualifierExpression;
 import org.matcher.operator.Operator;
 import org.matcher.parameter.ParameterBinding;
 
-public abstract class FromWhereBuilder<T extends ExpressionBuilder<T>> extends ExpressionBuilder<T> {
+public abstract class WhereBuilder<T extends ExpressionBuilder<T>> extends ExpressionBuilder<T> {
 
-    protected FromWhereBuilder(Class<?> referent) {
+    private final List<JoinQualifierExpression> joins = new ArrayList<>();
+
+    protected WhereBuilder(Class<?> referent) {
 	super(referent);
     }
-    
-    protected FromWhereBuilder(Expression<?> expression) {
+
+    protected WhereBuilder(Expression expression) {
 	super(expression);
+	if (expression instanceof JoinQualifierExpression) {
+	    joins.add((JoinQualifierExpression) expression);
+	}
     }
 
-    protected FromWhereBuilder(Class<?> referent, String property) {
+    protected WhereBuilder(Class<?> referent, String property) {
 	super(referent, property);
     }
 
@@ -48,12 +56,10 @@ public abstract class FromWhereBuilder<T extends ExpressionBuilder<T>> extends E
     public String build(Set<Class<?>> seenReferents, ParameterBinding bindings) {
 	initializeBindings();
 
-	final StringBuilder fromClause = new StringBuilder();
 	final StringBuilder whereClause = new StringBuilder();
+	parseExpressions(whereClause, bindings);
 
-	parseExpressions(whereClause, fromClause, seenReferents, bindings);
-
-	final StringBuilder sb = new StringBuilder().append("FROM ").append(fromClause);
+	final StringBuilder sb = new StringBuilder();
 	if (whereClause.length() > 0) {
 	    sb.append(" ").append("WHERE ").append(whereClause);
 	}
@@ -61,13 +67,17 @@ public abstract class FromWhereBuilder<T extends ExpressionBuilder<T>> extends E
     }
 
     @Override
-    protected String getResolveFromSeparator() {
-	return ", ";
+    public Set<Class<?>> getReferents() {
+	final Set<Class<?>> referents = super.getReferents();
+	for (JoinQualifierExpression join : joins) {
+	    referents.add(join.getOtherReferent());
+	}
+	return referents;
     }
 
     @Override
-    protected String getResolveSeparator() {
-	return "";
+    protected String getResolveFromSeparator() {
+	return ", ";
     }
 
     @Override

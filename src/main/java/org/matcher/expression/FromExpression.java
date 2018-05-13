@@ -25,11 +25,13 @@ import static org.matcher.builder.BuilderUtils.getTableName;
 import static org.matcher.builder.BuilderUtils.toAlias;
 import static org.matcher.expression.Expressions.NONE;
 
-import java.util.Set;
-
 import org.matcher.parameter.ParameterBinding;
 
-public class FromExpression extends Expression<Object> {
+public class FromExpression extends Expression {
+
+    public FromExpression() {
+	super(NONE.getSymbol());
+    }
 
     public FromExpression(Class<?> referent) {
 	super(NONE.getSymbol());
@@ -37,19 +39,8 @@ public class FromExpression extends Expression<Object> {
     }
 
     @Override
-    public String resolveFromClause(Set<Class<?>> seenReferents) {
-	if (!seenReferents.contains(getReferent())) {
-	    // update references
-	    seenReferents.add(getReferent());
-
-	    final String tableName = getTableName(getReferent());
-	    return tableName + " " + toAlias(tableName);
-	}
-	return "";
-    }
-
-    @Override
     public String resolve(ParameterBinding bindings) {
-	return "";
+	final String tableName = getTableName(getReferent());
+	return tableName + " " + toAlias(tableName);
     }
 }

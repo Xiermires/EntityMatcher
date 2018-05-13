@@ -30,18 +30,21 @@ import org.matcher.operator.Negatable;
 import org.matcher.operator.NegatableOperator;
 import org.matcher.parameter.ParameterBinding;
 
-public class QualifierExpression<T> extends Expression<T> implements Negatable {
+public class QualifierExpression<T> extends Expression implements Negatable {
 
     private final String affirmed;
     private final String negated;
 
     private boolean isNegated;
 
+    private final T value;
+    
     public QualifierExpression(NegatableOperator qualifier, T value) {
-	super(qualifier.getSymbol(), value);
+	super(qualifier.getSymbol());
 	this.affirmed = qualifier.getAffirmed();
 	this.negated = qualifier.getNegated();
 	this.isNegated = qualifier.isNegated();
+	this.value = value;
     }
 
     @Override
@@ -51,10 +54,10 @@ public class QualifierExpression<T> extends Expression<T> implements Negatable {
 	final String lhs = aliasPlusColumn(alias, column);
 	final String rhs;
 
-	if (getValue() == null) {
+	if (value == null) {
 	    rhs = nullParameter();
 	} else {
-	    rhs = getOperator() + " " + bindings.createParam(getValue());
+	    rhs = getOperator() + " " + bindings.createParam(value);
 	}
 	return lhs + rhs;
     }
@@ -63,11 +66,15 @@ public class QualifierExpression<T> extends Expression<T> implements Negatable {
 	return isNegated ? " IS NOT NULL " : " IS NULL ";
     }
 
+    public T getValue() {
+	return value;
+    }
+    
     @Override
     public String toString() {
 	final String ref = getReferent() == null ? "?" : getReferent().getSimpleName();
 	final String prop = getProperty() == null ? "?" : getProperty();
-	return ref + "." + prop + getOperator() + getValue();
+	return ref + "." + prop + getOperator() + value;
     }
 
     @Override

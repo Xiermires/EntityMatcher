@@ -22,51 +22,23 @@
 package org.matcher.expression;
 
 import static org.matcher.builder.BuilderUtils.aliasPlusColumn;
-import static org.matcher.builder.BuilderUtils.getTableName;
-import static org.matcher.builder.BuilderUtils.toAlias;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import org.matcher.parameter.ParameterBinding;
 import org.matcher.util.Arborescence;
 import org.matcher.util.Node;
 
-public abstract class Expression<V> extends Arborescence<Expression<V>> {
+public abstract class Expression extends Arborescence<Expression> {
 
-    private final V value;
     private String operator;
 
     private Class<?> referent;
     private String property;
 
     public Expression(String operator) {
-	this(operator, null);
-    }
-
-    public Expression(String operator, V value) {
 	this.operator = operator;
-	this.value = value;
-    }
-
-    /**
-     * Resolves to a from expression or to an empty string if it can't be resolved.
-     */
-    public String resolveFromClause(Set<Class<?>> seenReferents) {
-	return resolveReferent(getReferent(), seenReferents);
-    }
-
-    protected String resolveReferent(Class<?> referent, Set<Class<?>> seenReferents) {
-	if (!seenReferents.contains(referent)) {
-	    // update references
-	    seenReferents.add(referent);
-
-	    final String tableName = getTableName(referent);
-	    return tableName + " " + toAlias(tableName);
-	}
-	return "";
     }
 
     /**
@@ -75,7 +47,7 @@ public abstract class Expression<V> extends Arborescence<Expression<V>> {
     public String resolve(ParameterBinding bindings) {
 	if (hasChildren()) {
 	    final List<String> results = new ArrayList<>();
-	    for (Node<Expression<V>> child : getChildren()) {
+	    for (Node<Expression> child : getChildren()) {
 		results.add(child.getData().resolve(bindings));
 	    }
 	    return combine(results);
@@ -86,39 +58,22 @@ public abstract class Expression<V> extends Arborescence<Expression<V>> {
 
     protected String combine(List<String> results) {
 	final StringBuilder sb = new StringBuilder();
-	final Iterator<String> it = results.iterator();
-	boolean appendSeparator = appendNext(sb, it.next());
-
-	while (it.hasNext()) {
-	    if (appendSeparator) {
-		sb.append(getResolveSeparator());
-		appendSeparator = false;
+	for (String result : results) {
+	    if (result != null) {
+		sb.append(result);
 	    }
-	    appendSeparator = appendNext(sb, it.next());
 	}
 	return apply(sb.toString());
-    }
-
-    private boolean appendNext(StringBuilder appender, String next) {
-	if (next != null && !next.isEmpty()) {
-	    appender.append(next);
-	    return true;
-	}
-	return false;
     }
 
     protected String apply(String result) {
 	return result;
     }
 
-    protected String getResolveSeparator() {
-	return "";
-    }
-
     public String getOperator() {
 	return operator;
     }
-    
+
     protected void setOperator(String operator) {
 	this.operator = operator;
     }
@@ -137,10 +92,6 @@ public abstract class Expression<V> extends Arborescence<Expression<V>> {
 
     public String getProperty() {
 	return property;
-    }
-
-    public V getValue() {
-	return value;
     }
 
     public void overwriteNullReferenceAndProperties(Class<?> referent, String property) {

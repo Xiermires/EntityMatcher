@@ -22,13 +22,15 @@
 package org.matcher.name;
 
 import static org.matcher.expression.Expressions.AND;
+import static org.matcher.expression.Expressions.NONE;
 import static org.matcher.expression.Expressions.OR;
 import static org.matcher.expression.Expressions.closure;
 
 import java.util.Iterator;
 
-import org.matcher.builder.FromWhereBuilder;
+import org.matcher.builder.WhereBuilder;
 import org.matcher.expression.Expression;
+import org.matcher.expression.OperatorExpression;
 import org.matcher.parameter.ParameterBinding;
 import org.matcher.util.Node;
 
@@ -36,19 +38,23 @@ import org.matcher.util.Node;
  * This class allows creating expressions chaining different operators as defined in the {@link NameBasedExpressions}
  * class.
  * <p>
- * {@link NameBasedFromWhereBuilder} are a tree structure which root node is typeless initially and typified later on
+ * {@link NameBasedWhereBuilder} are a tree structure which root node is typeless initially and typified later on
  * when {@link #build(Class, ParameterBinding)}.
  * <p>
- * While typifying an {@link NameBasedFromWhereBuilder}, all typeless children are identically typified.
+ * While typifying an {@link NameBasedWhereBuilder}, all typeless children are identically typified.
  */
-public class NameBasedFromWhereBuilder extends FromWhereBuilder<NameBasedFromWhereBuilder> {
+public class NameBasedWhereBuilder extends WhereBuilder<NameBasedWhereBuilder> {
 
-    public NameBasedFromWhereBuilder(Expression<?> expression) {
+    public NameBasedWhereBuilder() {
+	super(new OperatorExpression());
+    }
+    
+    public NameBasedWhereBuilder(Expression expression) {
 	super(expression);
     }
 
     @Override
-    public NameBasedFromWhereBuilder getThis() {
+    public NameBasedWhereBuilder getThis() {
 	return this;
     }
 
@@ -58,7 +64,7 @@ public class NameBasedFromWhereBuilder extends FromWhereBuilder<NameBasedFromWhe
      * The other builder is typified with {@code property} and also inherits any other types defined in the this
      * builder.
      */
-    public NameBasedFromWhereBuilder or(String property, NameBasedFromWhereBuilder other) {
+    public NameBasedWhereBuilder or(String property, NameBasedWhereBuilder other) {
 	return mergeAfterLastExpression(null, property, other.hasChildren() ? closure(other) : other, OR);
     }
 
@@ -67,7 +73,7 @@ public class NameBasedFromWhereBuilder extends FromWhereBuilder<NameBasedFromWhe
      * <p>
      * The other builder is typified with {@code referent} and {@code property}.
      */
-    public NameBasedFromWhereBuilder or(Class<?> referent, String property, NameBasedFromWhereBuilder other) {
+    public NameBasedWhereBuilder or(Class<?> referent, String property, NameBasedWhereBuilder other) {
 	return mergeAfterLastExpression(referent, property, other.hasChildren() ? closure(other) : other, OR);
     }
 
@@ -77,7 +83,7 @@ public class NameBasedFromWhereBuilder extends FromWhereBuilder<NameBasedFromWhe
      * The other builder is typified with {@code property} and also inherits any other types defined in the this
      * builder.
      */
-    public NameBasedFromWhereBuilder and(String property, NameBasedFromWhereBuilder other) {
+    public NameBasedWhereBuilder and(String property, NameBasedWhereBuilder other) {
 	return mergeAfterLastExpression(null, property, other.hasChildren() ? closure(other) : other, AND);
     }
 
@@ -86,7 +92,7 @@ public class NameBasedFromWhereBuilder extends FromWhereBuilder<NameBasedFromWhe
      * <p>
      * The other builder is typified with {@code referent} and {@code property}.
      */
-    public NameBasedFromWhereBuilder and(Class<?> referent, String property, NameBasedFromWhereBuilder other) {
+    public NameBasedWhereBuilder and(Class<?> referent, String property, NameBasedWhereBuilder other) {
 	return mergeAfterLastExpression(referent, property, other.hasChildren() ? closure(other) : other, AND);
     }
 
@@ -95,15 +101,15 @@ public class NameBasedFromWhereBuilder extends FromWhereBuilder<NameBasedFromWhe
 	final StringBuilder sb = new StringBuilder();
 	sb.append(" ( ");
 
-	final Iterator<Expression<?>> it = getExpressions().iterator();
-	final Expression<?> first = it.next();
+	final Iterator<Expression> it = getExpressions().iterator();
+	final Expression first = it.next();
 	sb.append(first.toString());
 	for (; it.hasNext();) {
 	    sb.append(it.next());
 	}
 
-	for (Node<NameBasedFromWhereBuilder> node : getChildren()) {
-	    final NameBasedFromWhereBuilder child = node.getData();
+	for (Node<NameBasedWhereBuilder> node : getChildren()) {
+	    final NameBasedWhereBuilder child = node.getData();
 	    sb.append(child.toString());
 	}
 	sb.append(" ) ");

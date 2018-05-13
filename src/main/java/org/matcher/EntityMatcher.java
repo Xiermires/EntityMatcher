@@ -21,9 +21,12 @@
  *******************************************************************************/
 package org.matcher;
 
+import static org.matcher.expression.Expressions.COMMA;
 import static org.matcher.name.NameBasedExpressions.selection;
 
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,29 +48,35 @@ import javax.persistence.metamodel.Metamodel;
 
 import org.matcher.builder.AggregateBuilder;
 import org.matcher.builder.ExpressionBuilder;
-import org.matcher.builder.FromWhereBuilder;
+import org.matcher.builder.FromBuilder;
 import org.matcher.builder.SelectBuilder;
+import org.matcher.builder.TransparentBuilder;
+import org.matcher.builder.WhereBuilder;
 import org.matcher.expression.FromExpression;
 import org.matcher.expression.FunctionExpression;
 import org.matcher.expression.SelectExpression;
-import org.matcher.name.NameBasedFromWhereBuilder;
+import org.matcher.name.NameBasedWhereBuilder;
 import org.matcher.parameter.ParameterBinding;
 import org.matcher.parameter.ParameterBindingImpl;
 
 /**
- * An {@link EntityManager} wrapper which allows finding elements using the {@link NameBasedFromWhereBuilder} to compose
+ * An {@link EntityManager} wrapper which allows finding elements using the {@link NameBasedWhereBuilder} to compose
  * jpql expressions.
  */
 @SuppressWarnings("rawtypes")
 public class EntityMatcher implements EntityManager {
 
-    private static <T> ExpressionBuilder fromOnly(Class<T> returnType, Class<?>... others) {
-	final NameBasedFromWhereBuilder expressionBuilder = new NameBasedFromWhereBuilder(
-		new FromExpression(returnType));
-	for (Class<?> other : others)
-	    expressionBuilder.getExpressions().add(new FromExpression(other));
-
-	return expressionBuilder;
+    private static <T> ExpressionBuilder from(Collection<Class<?>> referents) {
+	final FromBuilder builder = new FromBuilder();
+	final Iterator<Class<?>> it = referents.iterator();
+	if (it.hasNext()) {
+	    builder.getExpressions().add(new FromExpression(it.next()));
+	    while (it.hasNext()) {
+		builder.getExpressions().add(COMMA);
+		builder.getExpressions().add(new FromExpression(it.next()));
+	    }
+	}
+	return builder;
     }
 
     private final EntityManager delegate;
@@ -85,8 +94,8 @@ public class EntityMatcher implements EntityManager {
 	return createTypedQuery(//
 		returnType, //
 		selection(functionExpression), //
-		fromOnly(functionExpression.getReferent()), //
-		null).getSingleResult();
+		TransparentBuilder.INSTANCE, //
+		TransparentBuilder.INSTANCE).getSingleResult();
     }
 
     /**
@@ -98,8 +107,8 @@ public class EntityMatcher implements EntityManager {
 	return createTypedQuery(//
 		returnType, //
 		selectBuilder, //
-		fromOnly(selectBuilder.getReferent()), //
-		null).getSingleResult();
+		TransparentBuilder.INSTANCE, //
+		TransparentBuilder.INSTANCE).getSingleResult();
     }
 
     /**
@@ -111,7 +120,7 @@ public class EntityMatcher implements EntityManager {
 	aggregateBuilder.overwriteNullReferenceAndProperties(returnType, null);
 	return createTypedQuery(returnType, //
 		selection(returnType), //
-		fromOnly(returnType), //
+		TransparentBuilder.INSTANCE, //
 		aggregateBuilder).getSingleResult();
     }
 
@@ -120,8 +129,8 @@ public class EntityMatcher implements EntityManager {
      * <p>
      * Equivalent to call {@link Query#getSingleResult()} on the built query.
      */
-    public <T> T findUnique(Class<T> clazz, FromWhereBuilder<?> whereBuilder) {
-	return createTypedQuery(clazz, selection(clazz), whereBuilder, null).getSingleResult();
+    public <T> T findUnique(Class<T> clazz, WhereBuilder<?> whereBuilder) {
+	return createTypedQuery(clazz, selection(clazz), whereBuilder, TransparentBuilder.INSTANCE).getSingleResult();
     }
 
     /**
@@ -129,9 +138,9 @@ public class EntityMatcher implements EntityManager {
      * <p>
      * Equivalent to call {@link Query#getSingleResult()} on the built query.
      */
-    public <T> T findUnique(Class<T> returnType, SelectExpression<?> selectExpression,
-	    FromWhereBuilder<?> whereBuilder) {
-	return createTypedQuery(returnType, selection(selectExpression), whereBuilder, null).getSingleResult();
+    public <T> T findUnique(Class<T> returnType, SelectExpression<?> selectExpression, WhereBuilder<?> whereBuilder) {
+	return createTypedQuery(returnType, selection(selectExpression), whereBuilder, TransparentBuilder.INSTANCE)
+		.getSingleResult();
     }
 
     /**
@@ -139,8 +148,8 @@ public class EntityMatcher implements EntityManager {
      * <p>
      * Equivalent to call {@link Query#getSingleResult()} on the built query.
      */
-    public <T> T findUnique(Class<T> returnType, SelectBuilder<?, ?> selectBuilder, FromWhereBuilder<?> whereBuilder) {
-	return createTypedQuery(returnType, selectBuilder, whereBuilder, null).getSingleResult();
+    public <T> T findUnique(Class<T> returnType, SelectBuilder<?, ?> selectBuilder, WhereBuilder<?> whereBuilder) {
+	return createTypedQuery(returnType, selectBuilder, whereBuilder, TransparentBuilder.INSTANCE).getSingleResult();
     }
 
     /**
@@ -149,7 +158,8 @@ public class EntityMatcher implements EntityManager {
      * Equivalent to call {@link Query#getResultList()} on the built query.
      */
     public <T> List<T> find(Class<T> clazz) {
-	return createTypedQuery(clazz, selection(clazz), fromOnly(clazz), null).getResultList();
+	return createTypedQuery(clazz, selection(clazz), TransparentBuilder.INSTANCE, TransparentBuilder.INSTANCE)
+		.getResultList();
     }
 
     /**
@@ -161,8 +171,8 @@ public class EntityMatcher implements EntityManager {
 	return createTypedQuery(//
 		returnType, //
 		selection(selectExpression), //
-		fromOnly(selectExpression.getReferent()), //
-		null).getResultList();
+		TransparentBuilder.INSTANCE, //
+		TransparentBuilder.INSTANCE).getResultList();
     }
 
     /**
@@ -174,8 +184,8 @@ public class EntityMatcher implements EntityManager {
 	return createTypedQuery(//
 		returnType, //
 		selectBuilder, //
-		fromOnly(selectBuilder.getReferent()), //
-		null).getResultList();
+		TransparentBuilder.INSTANCE, //
+		TransparentBuilder.INSTANCE).getResultList();
     }
 
     /**
@@ -187,7 +197,7 @@ public class EntityMatcher implements EntityManager {
 	return createTypedQuery(//
 		returnType, //
 		selection(returnType), //
-		fromOnly(returnType), //
+		TransparentBuilder.INSTANCE, //
 		aggregateBuilder).getResultList();
     }
 
@@ -202,7 +212,7 @@ public class EntityMatcher implements EntityManager {
 	return createTypedQuery(//
 		returnType, //
 		selection(functionExpression), //
-		fromOnly(functionExpression.getReferent()), //
+		TransparentBuilder.INSTANCE, //
 		aggregateBuilder).getResultList();
     }
 
@@ -213,11 +223,11 @@ public class EntityMatcher implements EntityManager {
      */
     public <T> List<T> find(Class<T> returnType, SelectBuilder<?, ?> selectBuilder,
 	    AggregateBuilder<?, ?> aggregateBuilder) {
-	aggregateBuilder.overwriteNullReferenceAndProperties(selectBuilder.getReferent(), null);
+	aggregateBuilder.overwriteNullReferenceAndProperties(selectBuilder.getLeadingReferent(), null);
 	return createTypedQuery(//
 		returnType, //
 		selectBuilder, //
-		fromOnly(selectBuilder.getReferent()), //
+		TransparentBuilder.INSTANCE, //
 		aggregateBuilder).getResultList();
     }
 
@@ -226,8 +236,8 @@ public class EntityMatcher implements EntityManager {
      * <p>
      * Equivalent to call {@link Query#getResultList()} on the built query.
      */
-    public <T> List<T> find(Class<T> clazz, FromWhereBuilder<?> whereBuilder) {
-	return createTypedQuery(clazz, selection(clazz), whereBuilder, null).getResultList();
+    public <T> List<T> find(Class<T> clazz, WhereBuilder<?> whereBuilder) {
+	return createTypedQuery(clazz, selection(clazz), whereBuilder, TransparentBuilder.INSTANCE).getResultList();
     }
 
     /**
@@ -235,37 +245,48 @@ public class EntityMatcher implements EntityManager {
      * <p>
      * Equivalent to call {@link Query#getResultList()} on the built query.
      */
-    public <T> List<T> find(Class<T> returnType, SelectBuilder<?, ?> selectBuilder, FromWhereBuilder<?> whereBuilder) {
-	return createTypedQuery(returnType, selectBuilder, whereBuilder, null).getResultList();
+    public <T> List<T> find(Class<T> returnType, SelectBuilder<?, ?> selectBuilder, WhereBuilder<?> whereBuilder) {
+	return createTypedQuery(returnType, selectBuilder, whereBuilder, TransparentBuilder.INSTANCE).getResultList();
     }
 
     private <T> TypedQuery<T> createTypedQuery( //
 	    Class<T> returnType, //
-	    SelectBuilder<?, ?> selectBuilder, //
+	    ExpressionBuilder<?> selectBuilder, //
 	    ExpressionBuilder<?> whereBuilder, //
-	    AggregateBuilder<?, ?> aggregateBuilder) {
+	    ExpressionBuilder<?> aggregateBuilder) {
 
-	selectBuilder.overwriteNullReferenceAndProperties(selectBuilder.getReferent(), null);
-	whereBuilder.overwriteNullReferenceAndProperties(selectBuilder.getReferent(), null);
-	if (aggregateBuilder != null) {
-	    aggregateBuilder.overwriteNullReferenceAndProperties(selectBuilder.getReferent(), null);
-	}
+	selectBuilder.overwriteNullReferenceAndProperties(selectBuilder.getLeadingReferent(), null);
+	whereBuilder.overwriteNullReferenceAndProperties(selectBuilder.getLeadingReferent(), null);
+	aggregateBuilder.overwriteNullReferenceAndProperties(selectBuilder.getLeadingReferent(), null);
 
-	final Set<Class<?>> seenReferents = new HashSet<>();
+	final Set<Class<?>> referents = getReferents(selectBuilder, whereBuilder, aggregateBuilder);
+	final ExpressionBuilder<?> fromBuilder = from(referents);
+
+	final Set<Class<?>> seenReferents = new HashSet<>(referents);
 	final ParameterBinding bindings = new ParameterBindingImpl();
 	final StringBuilder queryBuilder = new StringBuilder();
 	queryBuilder.append(selectBuilder.build(seenReferents, bindings));
 	queryBuilder.append(" ");
+	queryBuilder.append(fromBuilder.build(seenReferents, bindings));
+	queryBuilder.append(" ");
 	queryBuilder.append(whereBuilder.build(seenReferents, bindings));
-	if (aggregateBuilder != null) {
-	    queryBuilder.append(" ");
-	    queryBuilder.append(aggregateBuilder.build(seenReferents, bindings));
-	}
+	queryBuilder.append(" ");
+	queryBuilder.append(aggregateBuilder.build(seenReferents, bindings));
 
 	final String queryTxt = queryBuilder.toString().replaceAll("\\s+", " ").trim();
 	final TypedQuery<T> query = delegate.createQuery(queryTxt, returnType);
 	bindings.resolveParams(queryTxt, query);
 	return query;
+    }
+
+    public Set<Class<?>> getReferents(ExpressionBuilder<?>... builders) {
+	final Set<Class<?>> referents = new HashSet<>();
+	for (ExpressionBuilder<?> builder : builders) {
+	    if (builder != null) {
+		referents.addAll(builder.getReferents());
+	    }
+	}
+	return referents;
     }
 
     // delegated methods
