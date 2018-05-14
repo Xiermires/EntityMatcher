@@ -33,12 +33,12 @@ import org.matcher.operator.Operator;
 public class Expressions {
 
     public static final OperatorExpression COMMA = new OperatorExpression(", ");
-    
+    public static final OperatorExpression OPEN = new OperatorExpression(" ( ");
+    public static final OperatorExpression CLOSE = new OperatorExpression(" ) ");
+
     public static final Operator NONE = new Operator("");
     public static final Operator OR = new Operator(" OR ");
     public static final Operator AND = new Operator(" AND ");
-    public static final Operator OPEN = new Operator(" ( ");
-    public static final Operator CLOSE = new Operator(" ) ");
     public static final Operator SPACE = new Operator(" ");
 
     // select / functions / aggregation
@@ -85,7 +85,6 @@ public class Expressions {
 		((Negatable) expression).negate();
 	    }
 	}
-	builder.getChildren().forEach(node -> negate(node.getData()));
     }
 
     /**
@@ -94,17 +93,9 @@ public class Expressions {
      * i.e. {@code closure(lt(-10).or(gt(10))} translates as {@code ( x.y < -10 or x.y > 10 )}.
      */
     public static <T extends ExpressionBuilder<T>> T closure(T builder) {
-	builder.getExpressions().addFirst(new OperatorExpression(" ( "));
-	addClose(builder);
+	builder.getExpressions().addFirst(OPEN);
+	builder.getExpressions().addLast(CLOSE);
 	return builder;
-    }
-
-    private static void addClose(ExpressionBuilder<?> builder) {
-	if (builder.hasChildren()) {
-	    addClose(builder.getChildren().getLast().getData());
-	} else {
-	    builder.getExpressions().addLast(new OperatorExpression(" ) "));
-	}
     }
 
     // expressions

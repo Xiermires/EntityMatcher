@@ -31,14 +31,13 @@ import org.matcher.builder.WhereBuilder;
 import org.matcher.expression.Expression;
 import org.matcher.expression.OperatorExpression;
 import org.matcher.parameter.ParameterBinding;
-import org.matcher.util.Node;
 
 /**
  * This class allows creating expressions chaining different operators as defined in the {@link NameBasedExpressions}
  * class.
  * <p>
- * {@link NameBasedWhereBuilder} are a tree structure which root node is typeless initially and typified later on
- * when {@link #build(Class, ParameterBinding)}.
+ * {@link NameBasedWhereBuilder} are a tree structure which root node is typeless initially and typified later on when
+ * {@link #build(Class, ParameterBinding)}.
  * <p>
  * While typifying an {@link NameBasedWhereBuilder}, all typeless children are identically typified.
  */
@@ -47,7 +46,7 @@ public class NameBasedWhereBuilder extends WhereBuilder<NameBasedWhereBuilder> {
     public NameBasedWhereBuilder() {
 	super(new OperatorExpression());
     }
-    
+
     public NameBasedWhereBuilder(Expression expression) {
 	super(expression);
     }
@@ -64,7 +63,7 @@ public class NameBasedWhereBuilder extends WhereBuilder<NameBasedWhereBuilder> {
      * builder.
      */
     public NameBasedWhereBuilder or(String property, NameBasedWhereBuilder other) {
-	return mergeAfterLastExpression(null, property, other.hasChildren() ? closure(other) : other, OR);
+	return mergeAfterLastExpression(null, property, closure(other), OR);
     }
 
     /**
@@ -73,7 +72,7 @@ public class NameBasedWhereBuilder extends WhereBuilder<NameBasedWhereBuilder> {
      * The other builder is typified with {@code referent} and {@code property}.
      */
     public NameBasedWhereBuilder or(Class<?> referent, String property, NameBasedWhereBuilder other) {
-	return mergeAfterLastExpression(referent, property, other.hasChildren() ? closure(other) : other, OR);
+	return mergeAfterLastExpression(referent, property, closure(other), OR);
     }
 
     /**
@@ -83,7 +82,7 @@ public class NameBasedWhereBuilder extends WhereBuilder<NameBasedWhereBuilder> {
      * builder.
      */
     public NameBasedWhereBuilder and(String property, NameBasedWhereBuilder other) {
-	return mergeAfterLastExpression(null, property, other.hasChildren() ? closure(other) : other, AND);
+	return mergeAfterLastExpression(null, property, closure(other), AND);
     }
 
     /**
@@ -92,7 +91,7 @@ public class NameBasedWhereBuilder extends WhereBuilder<NameBasedWhereBuilder> {
      * The other builder is typified with {@code referent} and {@code property}.
      */
     public NameBasedWhereBuilder and(Class<?> referent, String property, NameBasedWhereBuilder other) {
-	return mergeAfterLastExpression(referent, property, other.hasChildren() ? closure(other) : other, AND);
+	return mergeAfterLastExpression(referent, property, closure(other), AND);
     }
 
     @Override
@@ -107,10 +106,6 @@ public class NameBasedWhereBuilder extends WhereBuilder<NameBasedWhereBuilder> {
 	    sb.append(it.next());
 	}
 
-	for (Node<NameBasedWhereBuilder> node : getChildren()) {
-	    final NameBasedWhereBuilder child = node.getData();
-	    sb.append(child.toString());
-	}
 	sb.append(" ) ");
 	return sb.toString().replaceAll("\\s+", " ");
     }

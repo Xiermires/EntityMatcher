@@ -33,12 +33,12 @@ import org.matcher.expression.JoinQualifierExpression;
 import org.matcher.operator.Operator;
 import org.matcher.parameter.ParameterBinding;
 
-public abstract class WhereBuilder<T extends ExpressionBuilder<T>> extends ExpressionBuilder<T> {
+public abstract class WhereBuilder<T extends WhereBuilder<T>> extends ExpressionBuilder<T> {
 
-    private final List<JoinQualifierExpression> joins = new ArrayList<>();
+    final List<JoinQualifierExpression> joins = new ArrayList<>();
 
     protected WhereBuilder(Class<?> referent) {
-	super(referent);
+	this(referent, null);
     }
 
     protected WhereBuilder(Expression expression) {
@@ -46,10 +46,12 @@ public abstract class WhereBuilder<T extends ExpressionBuilder<T>> extends Expre
 	if (expression instanceof JoinQualifierExpression) {
 	    joins.add((JoinQualifierExpression) expression);
 	}
+	setClosureOnMerge(true);
     }
 
     protected WhereBuilder(Class<?> referent, String property) {
 	super(referent, property);
+	setClosureOnMerge(true);
     }
 
     @Override
@@ -88,5 +90,17 @@ public abstract class WhereBuilder<T extends ExpressionBuilder<T>> extends Expre
     @Override
     protected Operator getAndOperator() {
 	return AND;
+    }
+
+    @Override
+    protected T mergeAfterLastExpression(//
+	    Class<?> referent, //
+	    String property, //
+	    T other, //
+	    Operator operator) {
+
+	super.mergeAfterLastExpression(referent, property, other, operator);
+	joins.addAll(other.joins);
+	return getThis();
     }
 }

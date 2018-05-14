@@ -28,9 +28,8 @@ public class BeanBasedSelectBuilder<T> extends SelectBuilder<T, BeanBasedSelectB
 
     public BeanBasedSelectBuilder(SelectExpression<T> expression) {
 	super(expression);
-	setData(this);
     }
-    
+
     @Override
     protected BeanBasedSelectBuilder<T> getThis() {
 	return this;

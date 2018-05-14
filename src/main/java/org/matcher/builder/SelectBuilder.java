@@ -30,7 +30,7 @@ import org.matcher.parameter.ParameterBinding;
 public abstract class SelectBuilder<T, E extends SelectBuilder<T, E>> extends ExpressionBuilder<E> {
 
     public SelectBuilder(Class<T> referent) {
-	super(referent, null);
+	this(referent, null);
     }
 
     public SelectBuilder(SelectExpression<T> expression) {
@@ -39,6 +39,7 @@ public abstract class SelectBuilder<T, E extends SelectBuilder<T, E>> extends Ex
 
     public SelectBuilder(Class<T> referent, String property) {
 	super(referent, property);
+	setClosureOnMerge(false);
     }
 
     @Override

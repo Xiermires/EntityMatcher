@@ -81,10 +81,10 @@ public class BeanBasedFromWhereBuilder extends WhereBuilder<BeanBasedFromWhereBu
 	    String property, //
 	    BeanBasedFromWhereBuilder other, //
 	    Operator operator) {
-	
+
 	other.delegate.getExpressions().addFirst(new OperatorExpression(operator.getSymbol()));
 	other.delegate.overwriteNullReferenceAndProperties(referent, property);
-	delegate.addChild(other.delegate);
+	delegate.getExpressions().addAll(other.delegate.getExpressions());
 	return getThis();
     }
 }
