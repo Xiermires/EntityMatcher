@@ -340,10 +340,17 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testHavingCount() {
-	final List<String> tos = matcher.find(String.class, selection(TestOther.class, "bar"),
-		groupBy("bar").and(having(count("bar"), gt(2))));
-	assertThat(tos.size(), is(2));
-	assertThat(tos, contains("Hello", "Snake"));
+	final String testee = matcher.findUnique(String.class, selection(TestOther.class, "bar"),
+		groupBy("bar").and(having(count("bar"), gt(1L))));
+	assertThat(testee, is("Snake"));
+    }
+
+    @Test
+    // FIXME
+    public void testMultipleHaving() {
+	final String testee = matcher.findUnique(String.class, selection(TestOther.class, "bar", "foo"),
+		groupBy("bar", "foo").and(having(count("bar"), gt(1L))).and(having(sum("foo"), lt(20L))));
+	assertThat(testee, is("Snake"));
     }
 
     @Test

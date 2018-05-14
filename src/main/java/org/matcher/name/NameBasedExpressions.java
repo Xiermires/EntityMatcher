@@ -29,6 +29,7 @@ import org.matcher.expression.Expression;
 import org.matcher.expression.Expressions;
 import org.matcher.expression.FunctionExpression;
 import org.matcher.expression.JoinQualifierExpression;
+import org.matcher.expression.OrphanExpression;
 import org.matcher.expression.QualifierExpression;
 import org.matcher.expression.SelectExpression;
 
@@ -241,15 +242,14 @@ public class NameBasedExpressions extends Expressions {
     /**
      * A having expression, where each property belongs to the leading query referent.
      * <p>
-     * i.e. {@code groupBy("foo", "bar")} translates as {@code GROUP BY ?.foo, ?.bar}.
+     * i.e. {@code having(count("foo"), gt(2)} translates as {@code HAVING COUNT(?.foo) > 2}.
      */
-    public static <T> NameBasedAggregateBuilder<T> having(SelectExpression<?> function,
-	    NameBasedWhereBuilder qualifier) {
+    public static <T> NameBasedAggregateBuilder<T> having(SelectExpression<?> function, NameBasedWhereBuilder qualifier) {
 	final SelectExpression<T> expression = new SelectExpression<>(HAVING);
 	expression.addChild(function);
 
 	for (Expression qualifierExpression : qualifier.getExpressions()) {
-	    expression.addChild(qualifierExpression);
+	    expression.addChild(new OrphanExpression(qualifierExpression));
 	}
 	return new NameBasedAggregateBuilder<>(expression);
     }

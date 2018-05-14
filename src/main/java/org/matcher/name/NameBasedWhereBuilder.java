@@ -22,7 +22,6 @@
 package org.matcher.name;
 
 import static org.matcher.expression.Expressions.AND;
-import static org.matcher.expression.Expressions.NONE;
 import static org.matcher.expression.Expressions.OR;
 import static org.matcher.expression.Expressions.closure;
 

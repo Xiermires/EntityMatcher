@@ -148,6 +148,19 @@ public class EntityMatcher implements EntityManager {
      * <p>
      * Equivalent to call {@link Query#getSingleResult()} on the built query.
      */
+    public <T> T findUnique(//
+	    Class<T> returnType, //
+	    SelectBuilder<?, ?> selectBuilder, //
+	    AggregateBuilder<?, ?> aggregateBuilder) {
+	return createTypedQuery(returnType, selectBuilder, TransparentBuilder.INSTANCE, aggregateBuilder)
+		.getSingleResult();
+    }
+
+    /**
+     * Returns a single element's selectBuilder defined properties matching the jpql expression.
+     * <p>
+     * Equivalent to call {@link Query#getSingleResult()} on the built query.
+     */
     public <T> T findUnique(Class<T> returnType, SelectBuilder<?, ?> selectBuilder, WhereBuilder<?> whereBuilder) {
 	return createTypedQuery(returnType, selectBuilder, whereBuilder, TransparentBuilder.INSTANCE).getSingleResult();
     }

@@ -35,7 +35,7 @@ public class BuilderUtils {
     }
     
     public static String aliasPlusColumn(String table, String column) {
-	return table == null && column == null ? null : column == null ? table : table.concat(".").concat(column);
+	return table == null && column == null ? "" : column == null ? table : table.concat(".").concat(column);
     }
 
     public static String getTableName(Class<?> clazz) {

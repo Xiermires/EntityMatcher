@@ -37,6 +37,9 @@ public abstract class Expression extends Arborescence<Expression> {
     private Class<?> referent;
     private String property;
 
+    protected Expression() {
+    }
+    
     public Expression(String operator) {
 	this.operator = operator;
     }
