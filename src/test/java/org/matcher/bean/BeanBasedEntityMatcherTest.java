@@ -113,7 +113,7 @@ public class BeanBasedEntityMatcherTest {
     @Test
     public void testEqNotNull() {
 	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
-	final List<TestClass> testee = matcher.findMany(TestClass.class, matching(tc.getBar(), not(eq(null))));
+	final List<TestClass> testee = matcher.findAny(TestClass.class, matching(tc.getBar(), not(eq(null))));
 	assertThat(testee.size(), is(3));
 	for (TestClass t : testee) {
 	    assertThat(t.getBar(), is(Matchers.not(nullValue())));
@@ -131,7 +131,7 @@ public class BeanBasedEntityMatcherTest {
     @Test
     public void testNotLike() {
 	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
-	final List<TestClass> testee = matcher.findMany(TestClass.class, matching(tc.getBar(), not(like("Hell%"))));
+	final List<TestClass> testee = matcher.findAny(TestClass.class, matching(tc.getBar(), not(like("Hell%"))));
 	assertThat(testee.size(), is(2));
 	for (TestClass t : testee)
 	    assertThat(t.getBar(), Matchers.not(startsWith("Hell")));
@@ -140,7 +140,7 @@ public class BeanBasedEntityMatcherTest {
     @Test
     public void testGreaterThan() {
 	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
-	final List<TestClass> testee = matcher.findMany(TestClass.class, matching(tc.getFoo(), gt(4)));
+	final List<TestClass> testee = matcher.findAny(TestClass.class, matching(tc.getFoo(), gt(4)));
 
 	assertThat(testee.size(), is(2));
 	for (TestClass t : testee)
@@ -150,7 +150,7 @@ public class BeanBasedEntityMatcherTest {
     @Test
     public void testNotGreaterThan() {
 	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
-	final List<TestClass> testee = matcher.findMany(TestClass.class, matching(tc.getFoo(), not(gt(4))));
+	final List<TestClass> testee = matcher.findAny(TestClass.class, matching(tc.getFoo(), not(gt(4))));
 
 	assertThat(testee.size(), is(2));
 	for (TestClass t : testee)
@@ -169,7 +169,7 @@ public class BeanBasedEntityMatcherTest {
     @Test
     public void testOrSameTableDifferentProperties() {
 	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
-	final List<TestClass> tcs = matcher.findMany(TestClass.class,
+	final List<TestClass> tcs = matcher.findAny(TestClass.class,
 		matching(tc.getFoo(), lt(4)).or(tc.getBar(), eq("Bye")));
 	for (TestClass t : tcs) {
 	    final boolean lt4 = tc.getFoo() < 4;
@@ -181,7 +181,7 @@ public class BeanBasedEntityMatcherTest {
     @Test
     public void testOrSameTableSameProperty() {
 	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
-	final List<TestClass> tcs = matcher.findMany(TestClass.class, matching(tc.getBar(), eq("Hello").or(eq("Bye"))));
+	final List<TestClass> tcs = matcher.findAny(TestClass.class, matching(tc.getBar(), eq("Hello").or(eq("Bye"))));
 	final List<String> bars = Arrays.asList("Hello", "Bye");
 	for (TestClass t : tcs)
 	    assertThat(bars.contains(t.getBar()), is(true));
@@ -190,7 +190,7 @@ public class BeanBasedEntityMatcherTest {
     @Test
     public void testSingleJoin() {
 	final TestJoin tj = BeanBasedMatcher.matcher(TestJoin.class);
-	final List<TestClass> joins = matcher.findMany(TestClass.class, matching(tj.getBar()));
+	final List<TestClass> joins = matcher.findAny(TestClass.class, matching(tj.getBar()));
 	assertThat(joins.size(), is(2));
     }
 
@@ -206,7 +206,7 @@ public class BeanBasedEntityMatcherTest {
     public void testIn() {
 	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
 	final List<String> bars = Arrays.asList("Hello", "Bye");
-	final List<TestClass> tcs = matcher.findMany(TestClass.class, matching(tc.getBar(), in(bars)));
+	final List<TestClass> tcs = matcher.findAny(TestClass.class, matching(tc.getBar(), in(bars)));
 	for (TestClass t : tcs)
 	    assertThat(bars.contains(t.getBar()), is(true));
     }
@@ -214,7 +214,7 @@ public class BeanBasedEntityMatcherTest {
     @Test
     public void testNotNot() {
 	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
-	final List<TestClass> tcs = matcher.findMany(TestClass.class,
+	final List<TestClass> tcs = matcher.findAny(TestClass.class,
 		matching(tc.getBar(), not(not(eq("Hello").or(eq("Bye"))))));
 	final List<String> bars = Arrays.asList("Hello", "Bye");
 	for (TestClass t : tcs)
@@ -224,7 +224,7 @@ public class BeanBasedEntityMatcherTest {
     @Test
     public void testClosure() {
 	final TestOther to = BeanBasedMatcher.matcher(TestOther.class);
-	final List<TestOther> tos = matcher.findMany(TestOther.class,
+	final List<TestOther> tos = matcher.findAny(TestOther.class,
 		matching(to.getBar(), eq("Snake")).and(to.getFoo(), closure(eq(5).or(eq(3)))));
 	for (TestOther t : tos) {
 	    assertThat(t.getBar(), is("Snake"));
@@ -235,7 +235,7 @@ public class BeanBasedEntityMatcherTest {
     @Test
     public void testBetween() {
 	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
-	final List<TestClass> tcs = matcher.findMany(TestClass.class, matching(tc.getFoo(), between(3, 5)));
+	final List<TestClass> tcs = matcher.findAny(TestClass.class, matching(tc.getFoo(), between(3, 5)));
 	for (TestClass t : tcs) {
 	    assertThat(t.getFoo(), is(greaterThanOrEqualTo(3)));
 	    assertThat(t.getFoo(), is(lessThanOrEqualTo(5)));

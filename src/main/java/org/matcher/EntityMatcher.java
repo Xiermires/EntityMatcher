@@ -188,7 +188,7 @@ public class EntityMatcher implements EntityManager {
      * <p>
      * Equivalent to call {@link Query#getResultList()} on the built query.
      */
-    public <T> List<T> findMany(Class<T> returnType, ClauseBuilder<?> clauseBuilder) {
+    public <T> List<T> findAny(Class<T> returnType, ClauseBuilder<?> clauseBuilder) {
 	return createTypedQuery(//
 		returnType, //
 		selection(new TypedExpression<T>(returnType)), //
