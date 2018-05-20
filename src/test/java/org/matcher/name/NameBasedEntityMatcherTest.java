@@ -30,14 +30,15 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.lessThan;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.nullValue;
-import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertThat;
 import static org.matcher.expression.Expressions.closure;
+import static org.matcher.expression.Expressions.count;
 import static org.matcher.expression.Expressions.not;
 import static org.matcher.name.NameBasedExpressions.avg;
 import static org.matcher.name.NameBasedExpressions.between;
 import static org.matcher.name.NameBasedExpressions.count;
 import static org.matcher.name.NameBasedExpressions.distinct;
+import static org.matcher.name.NameBasedExpressions.endsWith;
 import static org.matcher.name.NameBasedExpressions.eq;
 import static org.matcher.name.NameBasedExpressions.groupBy;
 import static org.matcher.name.NameBasedExpressions.gt;
@@ -49,6 +50,7 @@ import static org.matcher.name.NameBasedExpressions.max;
 import static org.matcher.name.NameBasedExpressions.min;
 import static org.matcher.name.NameBasedExpressions.orderBy;
 import static org.matcher.name.NameBasedExpressions.selection;
+import static org.matcher.name.NameBasedExpressions.startsWith;
 import static org.matcher.name.NameBasedExpressions.sum;
 
 import java.util.Arrays;
@@ -127,7 +129,21 @@ public class NameBasedEntityMatcherTest {
     public void testLike() {
 	final TestClass testee = matcher.find(TestClass.class, matching("bar", like("Hell%")));
 	assertThat(testee, is(Matchers.not(nullValue())));
-	assertThat(testee.getBar(), startsWith("Hell"));
+	assertThat(testee.getBar(), Matchers.startsWith("Hell"));
+    }
+
+    @Test
+    public void testStartsWith() {
+	final TestClass testee = matcher.find(TestClass.class, matching("bar", startsWith("Hell")));
+	assertThat(testee, is(Matchers.not(nullValue())));
+	assertThat(testee.getBar(), Matchers.startsWith("Hell"));
+    }
+
+    @Test
+    public void testEndsWith() {
+	final TestClass testee = matcher.find(TestClass.class, matching("bar", endsWith("ello")));
+	assertThat(testee, is(Matchers.not(nullValue())));
+	assertThat(testee.getBar(), Matchers.startsWith("Hell"));
     }
 
     @Test
@@ -135,7 +151,7 @@ public class NameBasedEntityMatcherTest {
 	final List<TestClass> testee = matcher.findAny(TestClass.class, matching("bar", not(like("Hell%"))));
 	assertThat(testee.size(), is(2));
 	for (TestClass tc : testee)
-	    assertThat(tc.getBar(), Matchers.not(startsWith("Hell")));
+	    assertThat(tc.getBar(), Matchers.not(Matchers.startsWith("Hell")));
     }
 
     @Test
@@ -204,7 +220,8 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testNotNot() {
-	final List<TestClass> tcs = matcher.findAny(TestClass.class, matching("bar", not(not(eq("Hello").or(eq("Bye"))))));
+	final List<TestClass> tcs = matcher.findAny(TestClass.class,
+		matching("bar", not(not(eq("Hello").or(eq("Bye"))))));
 	final List<String> bars = Arrays.asList("Hello", "Bye");
 	for (TestClass tc : tcs)
 	    assertThat(bars.contains(tc.getBar()), is(true));

@@ -190,6 +190,24 @@ public class NameBasedExpressions extends Expressions {
     }
 
     /**
+     * Starts with syntax sugar.
+     * <p>
+     * i.e. {@code startsWith("foo")} translates as {@code ?.? LIKE 'foo%'}.
+     */
+    public static NameBasedWhereBuilder startsWith(String value) {
+	return new NameBasedWhereBuilder(new QualifierExpression<Object>(LIKE, NOT_LIKE, value + "%"));
+    }
+
+    /**
+     * Ends with syntax sugar.
+     * <p>
+     * i.e. {@code startsWith("foo")} translates as {@code ?.? LIKE 'foo%'}.
+     */
+    public static NameBasedWhereBuilder endsWith(String value) {
+	return new NameBasedWhereBuilder(new QualifierExpression<Object>(LIKE, NOT_LIKE, "%" + value));
+    }
+
+    /**
      * A greater than expression.
      * <p>
      * i.e. {@code gt(10)} translates as {@code ?.? > 10}.
