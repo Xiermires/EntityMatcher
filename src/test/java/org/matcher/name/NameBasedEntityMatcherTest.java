@@ -102,21 +102,21 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testEq() {
-	final TestClass testee = matcher.findUnique(TestClass.class, matching("bar", eq("Hello")));
+	final TestClass testee = matcher.find(TestClass.class, matching("bar", eq("Hello")));
 	assertThat(testee, is(Matchers.not(nullValue())));
 	assertThat(testee.getBar(), is("Hello"));
     }
 
     @Test
     public void testEqNull() {
-	final TestClass testee = matcher.findUnique(TestClass.class, matching("bar", eq(null)));
+	final TestClass testee = matcher.find(TestClass.class, matching("bar", eq(null)));
 	assertThat(testee, is(Matchers.not(nullValue())));
 	assertThat(testee.getBar(), is(nullValue()));
     }
 
     @Test
     public void testEqNotNull() {
-	final List<TestClass> testee = matcher.find(TestClass.class, matching("bar", not(eq(null))));
+	final List<TestClass> testee = matcher.findMany(TestClass.class, matching("bar", not(eq(null))));
 	assertThat(testee.size(), is(3));
 	for (TestClass t : testee) {
 	    assertThat(t.getBar(), is(Matchers.not(nullValue())));
@@ -125,14 +125,14 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testLike() {
-	final TestClass testee = matcher.findUnique(TestClass.class, matching("bar", like("Hell%")));
+	final TestClass testee = matcher.find(TestClass.class, matching("bar", like("Hell%")));
 	assertThat(testee, is(Matchers.not(nullValue())));
 	assertThat(testee.getBar(), startsWith("Hell"));
     }
 
     @Test
     public void testNotLike() {
-	final List<TestClass> testee = matcher.find(TestClass.class, matching("bar", not(like("Hell%"))));
+	final List<TestClass> testee = matcher.findMany(TestClass.class, matching("bar", not(like("Hell%"))));
 	assertThat(testee.size(), is(2));
 	for (TestClass tc : testee)
 	    assertThat(tc.getBar(), Matchers.not(startsWith("Hell")));
@@ -140,7 +140,7 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testGreaterThan() {
-	final List<TestClass> testee = matcher.find(TestClass.class, matching("foo", gt(4)));
+	final List<TestClass> testee = matcher.findMany(TestClass.class, matching("foo", gt(4)));
 
 	assertThat(testee.size(), is(2));
 	for (TestClass tc : testee)
@@ -149,7 +149,7 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testNotGreaterThan() {
-	final List<TestClass> testee = matcher.find(TestClass.class, matching("foo", not(gt(4))));
+	final List<TestClass> testee = matcher.findMany(TestClass.class, matching("foo", not(gt(4))));
 
 	assertThat(testee.size(), is(2));
 	for (TestClass tc : testee)
@@ -158,14 +158,14 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testAndSameTableDifferentProperties() {
-	final TestClass tc = matcher.findUnique(TestClass.class, matching("foo", lt(4)).and("bar", eq("Bye")));
+	final TestClass tc = matcher.find(TestClass.class, matching("foo", lt(4)).and("bar", eq("Bye")));
 	assertThat(tc.getFoo(), is(lessThan(4)));
 	assertThat(tc.getBar(), is("Bye"));
     }
 
     @Test
     public void testOrSameTableDifferentProperties() {
-	final List<TestClass> tcs = matcher.find(TestClass.class, matching("foo", lt(4)).or("bar", eq("Bye")));
+	final List<TestClass> tcs = matcher.findMany(TestClass.class, matching("foo", lt(4)).or("bar", eq("Bye")));
 	for (TestClass tc : tcs) {
 	    final boolean lt4 = tc.getFoo() < 4;
 	    final boolean isBye = "Bye".equals(tc.getBar());
@@ -175,7 +175,7 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testOrSameTableSameProperty() {
-	final List<TestClass> tcs = matcher.find(TestClass.class, matching("bar", eq("Hello").or(eq("Bye"))));
+	final List<TestClass> tcs = matcher.findMany(TestClass.class, matching("bar", eq("Hello").or(eq("Bye"))));
 	final List<String> bars = Arrays.asList("Hello", "Bye");
 	for (TestClass tc : tcs)
 	    assertThat(bars.contains(tc.getBar()), is(true));
@@ -183,13 +183,13 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testSingleJoin() {
-	final List<TestClass> joins = matcher.find(TestClass.class, matching(TestJoin.class, "bar"));
+	final List<TestClass> joins = matcher.findMany(TestClass.class, matching(TestJoin.class, "bar"));
 	assertThat(joins.size(), is(2));
     }
 
     @Test
     public void testMultipleJoin() {
-	final TestClass join = matcher.findUnique(TestClass.class, matching(TestJoin.class, "bar").//
+	final TestClass join = matcher.find(TestClass.class, matching(TestJoin.class, "bar").//
 		and(matching(TestOther.class, "bar")));
 	assertThat(join, is(Matchers.not(nullValue())));
     }
@@ -197,14 +197,14 @@ public class NameBasedEntityMatcherTest {
     @Test
     public void testIn() {
 	final List<String> bars = Arrays.asList("Hello", "Bye");
-	final List<TestClass> tcs = matcher.find(TestClass.class, matching("bar", in(bars)));
+	final List<TestClass> tcs = matcher.findMany(TestClass.class, matching("bar", in(bars)));
 	for (TestClass tc : tcs)
 	    assertThat(bars.contains(tc.getBar()), is(true));
     }
 
     @Test
     public void testNotNot() {
-	final List<TestClass> tcs = matcher.find(TestClass.class, matching("bar", not(not(eq("Hello").or(eq("Bye"))))));
+	final List<TestClass> tcs = matcher.findMany(TestClass.class, matching("bar", not(not(eq("Hello").or(eq("Bye"))))));
 	final List<String> bars = Arrays.asList("Hello", "Bye");
 	for (TestClass tc : tcs)
 	    assertThat(bars.contains(tc.getBar()), is(true));
@@ -212,7 +212,7 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testClosure() {
-	final List<TestOther> tos = matcher.find(TestOther.class,
+	final List<TestOther> tos = matcher.findMany(TestOther.class,
 		matching("bar", eq("Snake")).and("foo", closure(eq(5).or(eq(3)))));
 	for (TestOther to : tos) {
 	    assertThat(to.getBar(), is("Snake"));
@@ -222,7 +222,7 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testBetween() {
-	final List<TestClass> tcs = matcher.find(TestClass.class, matching("foo", between(3, 5)));
+	final List<TestClass> tcs = matcher.findMany(TestClass.class, matching("foo", between(3, 5)));
 	for (TestClass tc : tcs) {
 	    assertThat(tc.getFoo(), is(greaterThanOrEqualTo(3)));
 	    assertThat(tc.getFoo(), is(lessThanOrEqualTo(5)));
@@ -319,7 +319,7 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testOrderBy() {
-	final List<TestClass> tos = matcher.find(TestClass.class, orderBy("foo"));
+	final List<TestClass> tos = matcher.findMany(TestClass.class, orderBy("foo"));
 	assertThat(tos.size(), is(4));
 	int min = Integer.MIN_VALUE;
 	for (TestClass t : tos) {

@@ -115,7 +115,7 @@ public class EntityMatcher implements EntityManager {
      * <p>
      * Equivalent to call {@link Query#getSingleResult()} on the built query.
      */
-    public <T> T findUnique(Class<T> returnType, ClauseBuilder<?> clauseBuilder) {
+    public <T> T find(Class<T> returnType, ClauseBuilder<?> clauseBuilder) {
 	clauseBuilder.overwriteNullReferenceAndProperties(returnType, null);
 	return createTypedQuery(returnType, //
 		selection(new TypedExpression<T>(returnType)), //
@@ -188,7 +188,7 @@ public class EntityMatcher implements EntityManager {
      * <p>
      * Equivalent to call {@link Query#getResultList()} on the built query.
      */
-    public <T> List<T> find(Class<T> returnType, ClauseBuilder<?> clauseBuilder) {
+    public <T> List<T> findMany(Class<T> returnType, ClauseBuilder<?> clauseBuilder) {
 	return createTypedQuery(//
 		returnType, //
 		selection(new TypedExpression<T>(returnType)), //
