@@ -41,7 +41,6 @@ import static org.matcher.name.NameBasedExpressions.distinct;
 import static org.matcher.name.NameBasedExpressions.eq;
 import static org.matcher.name.NameBasedExpressions.groupBy;
 import static org.matcher.name.NameBasedExpressions.gt;
-import static org.matcher.name.NameBasedExpressions.having;
 import static org.matcher.name.NameBasedExpressions.in;
 import static org.matcher.name.NameBasedExpressions.like;
 import static org.matcher.name.NameBasedExpressions.lt;
@@ -53,7 +52,6 @@ import static org.matcher.name.NameBasedExpressions.selection;
 import static org.matcher.name.NameBasedExpressions.sum;
 
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 
 import javax.persistence.EntityManager;
@@ -333,24 +331,30 @@ public class NameBasedEntityMatcherTest {
     @Test
     public void testOrderByFunction() {
 	final List<String> tos = matcher.find(String.class, selection(TestOther.class, "bar"),
-		groupBy("bar").and(orderBy(count("bar"))));
+		groupBy("bar").orderBy(count("bar")));
 	assertThat(tos.size(), is(2));
 	assertThat(tos, contains("Hello", "Snake"));
     }
 
     @Test
     public void testHavingCount() {
-	final String testee = matcher.findUnique(String.class, selection(TestOther.class, "bar"),
-		groupBy("bar").and(having(count("bar"), gt(1L))));
+	final String testee = matcher.findUnique(String.class, //
+		selection(TestOther.class, "bar"), //
+		groupBy("bar").//
+			having(count("bar"), gt(1L)));
 	assertThat(testee, is("Snake"));
     }
 
     @Test
     // FIXME
     public void testMultipleHaving() {
-	final String testee = matcher.findUnique(String.class, selection(TestOther.class, "bar", "foo"),
-		groupBy("bar", "foo").and(having(count("bar"), gt(1L))).and(having(sum("foo"), lt(20L))));
-	assertThat(testee, is("Snake"));
+	final List<Object[]> testee = matcher.find(Object[].class, //
+		selection(TestOther.class, "bar").and(sum("foo")), //
+		groupBy("bar", "foo").//
+			having(count("bar"), gt(0L)).//
+			and(sum("foo"), lt(20L)));
+
+	assertThat(testee.size(), is(4));
     }
 
     @Test
@@ -361,7 +365,7 @@ public class NameBasedEntityMatcherTest {
 			and(matching(TestOther.class, "bar")));
 
 	builder.overwriteNullReferenceAndProperties(TestClass.class, null);
-	final String queryTxt = builder.build(new HashSet<>(), new ParameterBindingImpl());
+	final String queryTxt = builder.build(new ParameterBindingImpl());
 
 	System.out.println(queryTxt);
 

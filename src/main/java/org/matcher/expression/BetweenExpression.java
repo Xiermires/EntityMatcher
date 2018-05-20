@@ -21,19 +21,21 @@
  *******************************************************************************/
 package org.matcher.expression;
 
+import static org.matcher.builder.BuilderUtils.aliasPlusColumn;
 import static org.matcher.builder.BuilderUtils.getColumnName;
 import static org.matcher.builder.BuilderUtils.getTableName;
-import static org.matcher.builder.BuilderUtils.aliasPlusColumn;
 import static org.matcher.builder.BuilderUtils.toAlias;
+import static org.matcher.expression.Expressions.AND;
+import static org.matcher.expression.Expressions.BETWEEN;
+import static org.matcher.expression.Expressions.NOT_BETWEEN;
 
 import org.matcher.expression.Expressions.Boundaries;
-import org.matcher.operator.NegatableOperator;
 import org.matcher.parameter.ParameterBinding;
 
 public class BetweenExpression extends QualifierExpression<Boundaries> {
 
-    public BetweenExpression(NegatableOperator qualifier, Boundaries value) {
-	super(qualifier, value);
+    public BetweenExpression(Boundaries value) {
+	super(BETWEEN, NOT_BETWEEN, value);
     }
 
     @Override
@@ -42,9 +44,9 @@ public class BetweenExpression extends QualifierExpression<Boundaries> {
 	final String column = getColumnName(getReferent(), getProperty());
 	final String lhs = aliasPlusColumn(alias, column);
 	String rhs = getOperator() + //
-		bindings.createParam(getValue().min) + " AND " + //
+		bindings.createParam(getValue().min) + AND + //
 		bindings.createParam(getValue().max);
-	
+
 	return lhs + rhs;
     }
 }

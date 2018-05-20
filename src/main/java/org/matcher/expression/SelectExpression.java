@@ -21,61 +21,12 @@
  *******************************************************************************/
 package org.matcher.expression;
 
-import static org.matcher.expression.Expressions.NONE;
-
-import org.matcher.operator.Operator;
-
 import com.google.common.base.Strings;
 
-public class SelectExpression<T> extends Expression {
+public class SelectExpression<T> extends TypedExpression<T> {
 
     public SelectExpression(Class<T> referent) {
-	super("");
-	setReferent(referent);
-    }
-
-    public SelectExpression(Class<T> referent, SelectExpression<?> expression) {
-	super("");
-	setReferent(referent);
-	addChild(expression);
-    }
-
-    public SelectExpression(SelectExpression<T> expression) {
-	this(NONE, expression);
-    }
-
-    public SelectExpression(Operator operator, SelectExpression<?> expression) {
-	super(operator.getSymbol());
-	setReferent(expression.getReferent());
-	setProperty(expression.getProperty());
-	addChild(expression);
-    }
-
-    public SelectExpression(Operator operator, String property) {
-	super(operator.getSymbol());
-	setProperty(property);
-    }
-
-    public SelectExpression(String operator, Class<T> referent, String property) {
-	super(operator);
-	setProperty(property);
-	setReferent(referent);
-    }
-
-    public SelectExpression(Operator operator) {
-	super(operator.getSymbol());
-    }
-
-    public SelectExpression(String property) {
-	super("");
-	setProperty(property);
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    // safe
-    public Class<T> getReferent() {
-	return (Class<T>) super.getReferent();
+	super(referent);
     }
 
     @Override

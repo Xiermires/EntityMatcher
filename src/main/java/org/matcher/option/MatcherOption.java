@@ -22,7 +22,7 @@
 package org.matcher.option;
 
 /**
- * General purpose marker to inlcude matcher options
+ * General purpose marker to include matcher options
  */
 public interface MatcherOption {
 }

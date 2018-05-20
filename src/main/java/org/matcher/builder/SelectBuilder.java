@@ -21,55 +21,36 @@
  *******************************************************************************/
 package org.matcher.builder;
 
-import java.util.Set;
 
-import org.matcher.expression.SelectExpression;
-import org.matcher.operator.Operator;
-import org.matcher.parameter.ParameterBinding;
+public abstract class SelectBuilder<T, E extends SelectBuilder<T, E>> extends TypedClauseBuilder<T, E> {
 
-public abstract class SelectBuilder<T, E extends SelectBuilder<T, E>> extends ExpressionBuilder<E> {
-
-    public SelectBuilder(Class<T> referent) {
-	this(referent, null);
-    }
-
-    public SelectBuilder(SelectExpression<T> expression) {
-	super(expression);
-    }
-
-    public SelectBuilder(Class<T> referent, String property) {
-	super(referent, property);
+    public SelectBuilder(Class<T> leadingReferent, String leadingProperty) {
+	super(leadingReferent, leadingProperty);
 	setClosureOnMerge(false);
     }
 
     @Override
-    public String build(Set<Class<?>> seenReferents, ParameterBinding bindings) {
-	initializeBindings();
-
-	final StringBuilder selectClause = new StringBuilder();
-	parseExpressions(selectClause, bindings);
-	return new StringBuilder("SELECT ").append(selectClause).toString();
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    // safe
     public Class<T> getLeadingReferent() {
-	return (Class<T>) super.getLeadingReferent();
+	return getType();
     }
 
     @Override
-    protected String getResolveFromSeparator() {
-	return "";
+    protected String getPrefix() {
+	return "SELECT ";
     }
 
     @Override
-    protected Operator getOrOperator() {
+    public ClauseType getClauseType() {
+	return ClauseType.SELECT;
+    }
+
+    @Override
+    protected String getOrOperator() {
 	throw new UnsupportedOperationException("Not supported.");
     }
 
     @Override
-    protected Operator getAndOperator() {
+    protected String getAndOperator() {
 	return null;
     }
 }

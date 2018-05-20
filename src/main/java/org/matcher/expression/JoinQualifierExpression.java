@@ -25,7 +25,6 @@ import static org.matcher.builder.BuilderUtils.aliasPlusColumn;
 
 import javax.persistence.Query;
 
-import org.matcher.operator.NegatableOperator;
 import org.matcher.parameter.ParameterBinding;
 
 /**
@@ -47,8 +46,8 @@ public class JoinQualifierExpression extends QualifierExpression<String> {
 
     private final Class<?> otherReferent;
 
-    public JoinQualifierExpression(NegatableOperator qualifier, Class<?> otherReferent, String otherProperty) {
-	super(qualifier, aliasPlusColumn(otherReferent, otherProperty));
+    public JoinQualifierExpression(String affirmed, String negated, Class<?> otherReferent, String otherProperty) {
+	super(affirmed, negated, aliasPlusColumn(otherReferent, otherProperty));
 	this.otherReferent = otherReferent;
     }
 

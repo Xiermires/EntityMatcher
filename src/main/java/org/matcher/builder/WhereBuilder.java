@@ -30,42 +30,22 @@ import java.util.Set;
 
 import org.matcher.expression.Expression;
 import org.matcher.expression.JoinQualifierExpression;
-import org.matcher.operator.Operator;
-import org.matcher.parameter.ParameterBinding;
 
-public abstract class WhereBuilder<T extends WhereBuilder<T>> extends ExpressionBuilder<T> {
+public abstract class WhereBuilder<T extends WhereBuilder<T>> extends ClauseBuilder<T> {
 
     final List<JoinQualifierExpression> joins = new ArrayList<>();
 
-    protected WhereBuilder(Class<?> referent) {
-	this(referent, null);
+    protected WhereBuilder() {
+	super(null, null);
     }
 
     protected WhereBuilder(Expression expression) {
-	super(expression);
+	super(expression.getReferent(), expression.getProperty());
+	getExpressions().add(expression);
 	if (expression instanceof JoinQualifierExpression) {
 	    joins.add((JoinQualifierExpression) expression);
 	}
 	setClosureOnMerge(true);
-    }
-
-    protected WhereBuilder(Class<?> referent, String property) {
-	super(referent, property);
-	setClosureOnMerge(true);
-    }
-
-    @Override
-    public String build(Set<Class<?>> seenReferents, ParameterBinding bindings) {
-	initializeBindings();
-
-	final StringBuilder whereClause = new StringBuilder();
-	parseExpressions(whereClause, bindings);
-
-	final StringBuilder sb = new StringBuilder();
-	if (whereClause.length() > 0) {
-	    sb.append(" ").append("WHERE ").append(whereClause);
-	}
-	return sb.toString();
     }
 
     @Override
@@ -78,28 +58,33 @@ public abstract class WhereBuilder<T extends WhereBuilder<T>> extends Expression
     }
 
     @Override
-    protected String getResolveFromSeparator() {
-	return ", ";
+    public ClauseType getClauseType() {
+	return ClauseType.WHERE;
     }
 
     @Override
-    protected Operator getOrOperator() {
+    protected String getPrefix() {
+	return "WHERE ";
+    }
+
+    @Override
+    protected String getOrOperator() {
 	return OR;
     }
 
     @Override
-    protected Operator getAndOperator() {
+    protected String getAndOperator() {
 	return AND;
     }
 
     @Override
-    protected T mergeAfterLastExpression(//
+    public <E extends T> T merge(//
 	    Class<?> referent, //
 	    String property, //
-	    T other, //
-	    Operator operator) {
+	    E other, //
+	    String operator) {
 
-	super.mergeAfterLastExpression(referent, property, other, operator);
+	super.merge(referent, property, other, operator);
 	joins.addAll(other.joins);
 	return getThis();
     }

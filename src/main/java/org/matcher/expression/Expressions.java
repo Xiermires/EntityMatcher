@@ -21,50 +21,113 @@
  *******************************************************************************/
 package org.matcher.expression;
 
-import org.matcher.builder.ExpressionBuilder;
-import org.matcher.builder.SelectBuilder;
+import org.matcher.builder.ClauseBuilder;
+import org.matcher.builder.GroupByBuilder;
+import org.matcher.builder.OrderByBuilder;
+import org.matcher.builder.TypedClauseBuilder;
 import org.matcher.name.NameBasedSelectBuilder;
-import org.matcher.operator.Functor;
-import org.matcher.operator.Joiner;
-import org.matcher.operator.Negatable;
-import org.matcher.operator.NegatableOperator;
-import org.matcher.operator.Operator;
 
 public class Expressions {
 
-    public static final OperatorExpression COMMA = new OperatorExpression(", ");
-    public static final OperatorExpression OPEN = new OperatorExpression(" ( ");
-    public static final OperatorExpression CLOSE = new OperatorExpression(" ) ");
+    public static final String OR = " OR ";
+    public static final String AND = " AND ";
 
-    public static final Operator NONE = new Operator("");
-    public static final Operator OR = new Operator(" OR ");
-    public static final Operator AND = new Operator(" AND ");
-    public static final Operator SPACE = new Operator(" ");
+    public static final ConstantExpression COMMA = new ConstantExpression(", ");
+    public static final ConstantExpression OPEN = new ConstantExpression(" ( ");
+    public static final ConstantExpression CLOSE = new ConstantExpression(" ) ");
 
-    // select / functions / aggregation
+    // Operators
 
-    public static final Operator PROPERTY = new Operator("");
-    public static final Operator ORDERBY = new Operator("ORDER BY ");
-    public static final Operator GROUPBY = new Operator("GROUP BY ");
-    public static final Operator HAVING = new Operator("HAVING ");
-    public static final Operator DISTINCT = new Operator("DISTINCT ") {
-	@Override
-	public String apply(String lhs, String rhs) {
-	    return getSymbol() + lhs;
+    public static final String EQUALS = " = ";
+    public static final String NOT_EQUALS = " != ";
+    public static final String LIKE = " LIKE ";
+    public static final String NOT_LIKE = " NOT LIKE ";
+    public static final String GREATER_THAN = " > ";
+    public static final String LESSER_THAN = " < ";
+    public static final String IN = " IN ";
+    public static final String NOT_IN = " NOT IN ";
+    public static final String BETWEEN = " BETWEEN ";
+    public static final String NOT_BETWEEN = " NOT BETWEEN ";
+
+    // select
+
+    public static final String MIN = "MIN";
+    public static final String MAX = "MAX";
+    public static final String AVG = "AVG";
+    public static final String SUM = "SUM";
+    public static final String COUNT = "COUNT";
+    public static final String DISTINCT = "DISTINCT";
+
+    public static <T> NameBasedSelectBuilder<T> selection(Class<T> referent) {
+	return new NameBasedSelectBuilder<T>(referent);
+    }
+
+    public static <T> NameBasedSelectBuilder<T> selection( //
+	    TypedExpression<T> expression, //
+	    TypedExpression<?>... others) {
+
+	final NameBasedSelectBuilder<T> builder = new NameBasedSelectBuilder<>(expression.getType());
+	addCommaSeparatedExpressions(builder, expression, others);
+	return builder;
+    }
+
+    // functions
+
+    public static <T> FunctionExpression<T> count(FunctionExpression<T> other) {
+	final FunctionExpression<T> expression = new FunctionExpression<T>("COUNT", other.getType());
+	expression.addChild(other);
+	return expression;
+    }
+
+    // group by
+
+    /**
+     * A group by expression, where each property belongs to the leading query referent.
+     * <p>
+     * i.e. {@code groupBy("foo", "bar")} translates as {@code GROUP BY ?.foo, ?.bar}.
+     */
+    public static <T> GroupByBuilder<T> groupBy(FunctionExpression<T> function, FunctionExpression<?>... others) {
+	final GroupByBuilder<T> builder = new GroupByBuilder<>(function.getType(), null);
+	addCommaSeparatedExpressions(builder, function, others);
+	return builder;
+    }
+
+    // order by
+
+    /**
+     * An order by expression, where each property belongs to the leading query referent.
+     * <p>
+     * i.e. {@code orderBy("foo", "bar")} translates as {@code ORDER BY ?.foo, ?.bar}.
+     */
+    public static <T> OrderByBuilder<T> orderBy(FunctionExpression<T> function, FunctionExpression<?>... others) {
+	final OrderByBuilder<T> builder = new OrderByBuilder<>(function.getType(), null);
+	addCommaSeparatedExpressions(builder, function, others);
+	return builder;
+    }
+
+    protected static Expression toExpression(String property) {
+	final Expression expression = new Expression();
+	expression.setProperty(property);
+	return expression;
+    }
+
+    protected static Expression[] toExpressions(String... properties) {
+	final Expression[] expressions = new Expression[properties.length];
+	for (int i = 0; i < properties.length; i++) {
+	    expressions[i] = toExpression(properties[i]);
 	}
-    };
+	return expressions;
+    }
 
-    public static final Functor MIN = new Functor("MIN");
-    public static final Functor MAX = new Functor("MAX");
-    public static final Functor AVG = new Functor("AVG");
-    public static final Functor SUM = new Functor("SUM");
-    public static final Functor COUNT = new Functor("COUNT");
-
-    public static SelectBuilder<?, ?> count(SelectBuilder<?, ?> otherExpression) {
-	final SelectExpression<?> count = new SelectExpression<>(COUNT);
-	count.setReferent(otherExpression.getLeadingReferent());
-	count.setProperty(otherExpression.getLeadingProperty());
-	return new NameBasedSelectBuilder<>(count);
+    protected static <T, E extends TypedClauseBuilder<T, E>> void addCommaSeparatedExpressions(E builder,
+	    Expression first, Expression... others) {
+	final TypedExpression<T> expression = new TypedExpression<>(builder.getType());
+	expression.addChild(first);
+	for (Expression other : others) {
+	    expression.addChild(COMMA);
+	    expression.addChild(other);
+	}
+	builder.getExpressions().add(expression);
     }
 
     // wrappers
@@ -74,12 +137,12 @@ public class Expressions {
      * <p>
      * i.e. {@code not(eq(5))} translates as {@code ?.? != 5}.
      */
-    public static <T extends ExpressionBuilder<T>> T not(T builder) {
+    public static <T extends ClauseBuilder<T>> T not(T builder) {
 	negate(builder);
 	return builder;
     }
 
-    private static void negate(ExpressionBuilder<?> builder) {
+    private static void negate(ClauseBuilder<?> builder) {
 	for (Expression expression : builder.getExpressions()) {
 	    if (expression instanceof Negatable) {
 		((Negatable) expression).negate();
@@ -92,35 +155,13 @@ public class Expressions {
      * <p>
      * i.e. {@code closure(lt(-10).or(gt(10))} translates as {@code ( x.y < -10 or x.y > 10 )}.
      */
-    public static <T extends ExpressionBuilder<T>> T closure(T builder) {
+    public static <T extends ClauseBuilder<T>> T closure(T builder) {
 	builder.getExpressions().addFirst(OPEN);
 	builder.getExpressions().addLast(CLOSE);
 	return builder;
     }
 
     // expressions
-
-    public static final Joiner INNER_JOIN = new Joiner(" INNER JOIN ");
-
-    public static final <T> NegatableOperator LIKE(Class<T> type) {
-	return new NegatableOperator(" LIKE ", " NOT LIKE ");
-    }
-
-    public static final NegatableOperator EQ(Class<?> type) {
-	return new NegatableOperator(" = ", " != ");
-    }
-
-    public static final <T extends Number> NegatableOperator GT(Class<? extends T> type) {
-	return new NegatableOperator(" > ", " < ");
-    }
-
-    public static final <T extends Number> NegatableOperator LT(Class<T> type) {
-	return new NegatableOperator(" < ", " > ");
-    }
-
-    public static final NegatableOperator IN() {
-	return new NegatableOperator(" IN ", " NOT IN ");
-    }
 
     public static class Boundaries {
 	public final Number min;
@@ -136,6 +177,4 @@ public class Expressions {
 	    return "( " + min + ", " + max + " )";
 	}
     }
-
-    public static final NegatableOperator BETWEEN = new NegatableOperator(" BETWEEN ", " NOT BETWEEN ");
 }

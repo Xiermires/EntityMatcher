@@ -26,8 +26,6 @@ import static org.matcher.builder.BuilderUtils.getColumnName;
 import static org.matcher.builder.BuilderUtils.getTableName;
 import static org.matcher.builder.BuilderUtils.toAlias;
 
-import org.matcher.operator.Negatable;
-import org.matcher.operator.NegatableOperator;
 import org.matcher.parameter.ParameterBinding;
 
 public class QualifierExpression<T> extends Expression implements Negatable {
@@ -39,11 +37,11 @@ public class QualifierExpression<T> extends Expression implements Negatable {
 
     private final T value;
     
-    public QualifierExpression(NegatableOperator qualifier, T value) {
-	super(qualifier.getSymbol());
-	this.affirmed = qualifier.getAffirmed();
-	this.negated = qualifier.getNegated();
-	this.isNegated = qualifier.isNegated();
+    public QualifierExpression(String affirmed, String negated, T value) {
+	setOperator(affirmed);
+	this.affirmed = affirmed;
+	this.negated = negated;
+	this.isNegated = false;
 	this.value = value;
     }
 
@@ -79,7 +77,7 @@ public class QualifierExpression<T> extends Expression implements Negatable {
 
     @Override
     public void negate() {
-	setOperator(isNegated ? affirmed : negated);
 	isNegated = !isNegated;
+	setOperator(isNegated ? negated : affirmed);
     }
 }

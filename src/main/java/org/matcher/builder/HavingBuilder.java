@@ -19,34 +19,51 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *******************************************************************************/
-package org.matcher.name;
+package org.matcher.builder;
 
-import static org.matcher.expression.Expressions.COMMA;
-import static org.matcher.name.NameBasedExpressions.selection;
+import static org.matcher.expression.Expressions.AND;
 
-import org.matcher.builder.SelectBuilder;
+import org.matcher.expression.ConstantExpression;
+import org.matcher.expression.Expression;
 import org.matcher.expression.FunctionExpression;
+import org.matcher.expression.OrphanExpression;
+import org.matcher.expression.TypedExpression;
+import org.matcher.name.NameBasedWhereBuilder;
 
-public class NameBasedSelectBuilder<T> extends SelectBuilder<T, NameBasedSelectBuilder<T>> {
+public class HavingBuilder<T> extends GroupByBuilder<T> {
 
-    public NameBasedSelectBuilder(Class<T> type) {
-	super(type, null);
+    public HavingBuilder(Class<T> leadingReferent, String leadingProperty) {
+	super(leadingReferent, leadingProperty);
     }
 
     @Override
-    protected NameBasedSelectBuilder<T> getThis() {
+    protected HavingBuilder<T> getThis() {
 	return this;
     }
 
-    public NameBasedSelectBuilder<?> and(String property, String... others) {
-	getExpressions().addLast(COMMA);
-	getExpressions().addAll(selection(property, others).getExpressions());
+    @Override
+    public ClauseType getClauseType() {
+	return ClauseType.HAVING;
+    }
+
+    @Override
+    protected String getPrefix() {
+	return "HAVING ";
+    }
+
+    public HavingBuilder<T> and(FunctionExpression<T> function, NameBasedWhereBuilder qualifier) {
+	final TypedExpression<T> expression = createHavingExpression(function, qualifier);
+	expression.getChildren().addFirst(new ConstantExpression(AND));
+	getExpressions().add(expression);
 	return this;
     }
 
-    public NameBasedSelectBuilder<T> and(FunctionExpression<T> expression, FunctionExpression<?>... others) {
-	getExpressions().addLast(COMMA);
-	getExpressions().addAll(selection(expression, others).getExpressions());
-	return this;
+    static <T> TypedExpression<T> createHavingExpression(FunctionExpression<T> function, NameBasedWhereBuilder qualifier) {
+	final TypedExpression<T> expression = new TypedExpression<T>(function.getType());
+	expression.addChild(function);
+	for (Expression qualifierExpression : qualifier.getExpressions()) {
+	    expression.addChild(new OrphanExpression(qualifierExpression));
+	}
+	return expression;
     }
 }

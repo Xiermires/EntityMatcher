@@ -19,34 +19,50 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *******************************************************************************/
-package org.matcher.name;
+package org.matcher.builder;
 
-import static org.matcher.expression.Expressions.COMMA;
-import static org.matcher.name.NameBasedExpressions.selection;
-
-import org.matcher.builder.SelectBuilder;
+import org.matcher.expression.Expressions;
 import org.matcher.expression.FunctionExpression;
+import org.matcher.expression.TypedExpression;
+import org.matcher.name.NameBasedWhereBuilder;
 
-public class NameBasedSelectBuilder<T> extends SelectBuilder<T, NameBasedSelectBuilder<T>> {
+public class GroupByBuilder<T> extends TypedClauseBuilder<T, GroupByBuilder<T>> {
 
-    public NameBasedSelectBuilder(Class<T> type) {
-	super(type, null);
+    public GroupByBuilder(Class<T> leadingReferent, String leadingProperty) {
+	super(leadingReferent, leadingProperty);
     }
 
     @Override
-    protected NameBasedSelectBuilder<T> getThis() {
+    protected GroupByBuilder<T> getThis() {
 	return this;
     }
 
-    public NameBasedSelectBuilder<?> and(String property, String... others) {
-	getExpressions().addLast(COMMA);
-	getExpressions().addAll(selection(property, others).getExpressions());
-	return this;
+    @Override
+    public ClauseType getClauseType() {
+	return ClauseType.GROUP_BY;
     }
 
-    public NameBasedSelectBuilder<T> and(FunctionExpression<T> expression, FunctionExpression<?>... others) {
-	getExpressions().addLast(COMMA);
-	getExpressions().addAll(selection(expression, others).getExpressions());
-	return this;
+    @Override
+    protected String getPrefix() {
+	return "GROUP BY ";
+    }
+
+    /**
+     * A having expression, where each property belongs to the leading query referent.
+     * <p>
+     * i.e. {@code having(count("foo"), gt(2)} translates as {@code HAVING COUNT(?.foo) > 2}.
+     */
+    public HavingBuilder<T> having(FunctionExpression<T> function, NameBasedWhereBuilder qualifier) {
+	final TypedExpression<T> expression = HavingBuilder.createHavingExpression(function, qualifier);
+	final HavingBuilder<T> builder = new HavingBuilder<>(expression.getType(), null);
+	builder.getExpressions().add(expression);
+	builder.setPreviousClause(this);
+	return builder;
+    }
+
+    public OrderByBuilder<T> orderBy(FunctionExpression<T> function, FunctionExpression<?>... others) {
+	final OrderByBuilder<T> builder = Expressions.orderBy(function, others);
+	builder.setPreviousClause(this);
+	return builder;
     }
 }

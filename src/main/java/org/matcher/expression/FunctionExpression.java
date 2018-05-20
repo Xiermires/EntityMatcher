@@ -21,35 +21,32 @@
  *******************************************************************************/
 package org.matcher.expression;
 
-import org.matcher.operator.Operator;
+public class FunctionExpression<T> extends TypedExpression<T> {
 
-public class FunctionExpression<T> extends SelectExpression<T> {
+    private boolean closure = true;
 
-    public FunctionExpression(Operator operator) {
-	super(operator);
+    public FunctionExpression(String function, Class<T> referent) {
+	super(referent);
+	setOperator(function);
     }
 
-    public FunctionExpression(Operator operator, FunctionExpression<?> expression) {
-	super(operator, expression);
-    }
-
-    public FunctionExpression(Operator operator, String property) {
-	super(operator);
-	setProperty(property);
-    }
-
-    public FunctionExpression(Class<T> referent, FunctionExpression<?> expression) {
-	super(referent, expression);
-    }
-
-    public FunctionExpression(Operator operator, Class<?> referent, String property) {
-	super(operator);
-	setReferent(referent);
-	setProperty(property);
+    public void setClosure(boolean enabled) {
+	closure = enabled;
     }
 
     @Override
     protected String apply(String result) {
-	return getOperator() + "(" + result + ")";
+	final StringBuilder sb = new StringBuilder();
+	sb.append(getOperator());
+	if (closure) {
+	    sb.append("(");
+	} else {
+	    sb.append(" ");
+	}
+	sb.append(result);
+	if (closure) {
+	    sb.append(")");
+	}
+	return sb.toString();
     }
 }

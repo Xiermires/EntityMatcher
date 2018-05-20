@@ -19,37 +19,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *******************************************************************************/
-package org.matcher.operator;
+package org.matcher.expression;
 
-public class NegatableOperator extends Operator implements Negatable {
+import org.matcher.parameter.ParameterBinding;
 
-    private final String affirmed;
-    private final String negated;
+public class ConstantExpression extends Expression {
 
-    private boolean isNegated;
+    private final String constant;
 
-    public NegatableOperator(String affirmed, String negated) {
-	super(affirmed);
-	this.affirmed = affirmed;
-	this.negated = negated;
-	this.isNegated = false;
+    public ConstantExpression(String constant) {
+	this.constant = constant;
     }
 
     @Override
-    public void negate() {
-	setSymbol(isNegated ? affirmed : negated);
-	isNegated = !isNegated;
+    public void setReferent(Class<?> referent) {
     }
 
-    public boolean isNegated() {
-	return isNegated;
+    @Override
+    public void setProperty(String property) {
     }
-    
-    public String getAffirmed() {
-	return affirmed;
+
+    @Override
+    public void setOperator(String operator) {
     }
-    
-    public String getNegated() {
-	return negated;
+
+    @Override
+    public String resolve(ParameterBinding bindings) {
+	return constant;
     }
 }

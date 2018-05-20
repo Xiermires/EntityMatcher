@@ -19,21 +19,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *******************************************************************************/
-package org.matcher.operator;
+package org.matcher.expression;
 
-import static org.matcher.builder.BuilderUtils.*;
+public class TypedExpression<T> extends Expression {
 
-public class Joiner extends Operator {
+    private final Class<T> type;
 
-    public Joiner(String joiner) {
-	super(joiner);
+    public TypedExpression(Class<T> referent) {
+	setReferent(referent);
+	type = referent;
     }
 
-    public String resolve(//
-	    String table, String alias, String column, //
-	    String joinTable, String joinAlias, String joinColumn) {
-
-	return table + " " + alias + getSymbol() + joinTable + " " + joinAlias + " ON "
-		+ aliasPlusColumn(alias, column) + " = " + aliasPlusColumn(joinAlias, joinColumn);
+    public Class<T> getType() {
+	return type;
     }
 }

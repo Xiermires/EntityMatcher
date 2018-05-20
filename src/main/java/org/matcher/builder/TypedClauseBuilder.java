@@ -19,35 +19,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *******************************************************************************/
-package org.matcher.expression;
+package org.matcher.builder;
 
-import org.matcher.parameter.ParameterBinding;
+public abstract class TypedClauseBuilder<T, E extends TypedClauseBuilder<T, E>> extends ClauseBuilder<E> {
 
-public class OperatorExpression extends Expression {
+    private final Class<T> type;
 
-    public OperatorExpression() {
-	super("");
+    public TypedClauseBuilder(Class<T> type, String property) {
+	super(type, property);
+	this.type = type;
     }
 
-    public OperatorExpression(String operator) {
-	super(operator);
-    }
-
-    @Override
-    public void setReferent(Class<?> referent) {
-    }
-
-    @Override
-    public void setProperty(String property) {
-    }
-
-    @Override
-    public String resolve(ParameterBinding bindings) {
-	return getOperator().toString();
-    }
-
-    @Override
-    public String toString() {
-	return getOperator().toString();
+    public Class<T> getType() {
+	return type;
     }
 }

@@ -28,12 +28,15 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.matcher.expression.ConstantExpression;
 import org.matcher.expression.Expression;
-import org.matcher.expression.OperatorExpression;
-import org.matcher.operator.Operator;
 import org.matcher.parameter.ParameterBinding;
 
-public abstract class ExpressionBuilder<Builder extends ExpressionBuilder<Builder>> {
+public abstract class ClauseBuilder<Builder extends ClauseBuilder<Builder>> {
+
+    public static enum ClauseType {
+	SELECT, FROM, WHERE, GROUP_BY, ORDER_BY, HAVING;
+    }
 
     private Class<?> leadingReferent;
     private String leadingProperty;
@@ -42,25 +45,17 @@ public abstract class ExpressionBuilder<Builder extends ExpressionBuilder<Builde
 
     private boolean closureOnMerge = false;
 
-    protected ExpressionBuilder() {
-	this(null, null);
-    }
+    private ClauseBuilder<?> previousClause;
+    private ClauseBuilder<?> nextClause;
 
-    protected ExpressionBuilder(Class<?> referent) {
-	this(referent, null);
-    }
-
-    protected ExpressionBuilder(Expression expression) {
-	this(expression.getReferent(), expression.getProperty());
-	expressions.add(expression);
-    }
-
-    protected ExpressionBuilder(Class<?> referent, String property) {
-	this.leadingReferent = referent;
-	this.leadingProperty = property;
+    protected ClauseBuilder(Class<?> leadingReferent, String leadingProperty) {
+	this.leadingReferent = leadingReferent;
+	this.leadingProperty = leadingProperty;
     }
 
     protected abstract Builder getThis();
+
+    public abstract ClauseType getClauseType();
 
     protected void setClosureOnMerge(boolean closureOnMerge) {
 	this.closureOnMerge = closureOnMerge;
@@ -68,6 +63,14 @@ public abstract class ExpressionBuilder<Builder extends ExpressionBuilder<Builde
 
     protected boolean isClosureOnMerge() {
 	return closureOnMerge;
+    }
+
+    protected void setPreviousClause(ClauseBuilder<?> previousClause) {
+	this.previousClause = previousClause;
+    }
+
+    protected void setNextClause(ClauseBuilder<?> nextClause) {
+	this.nextClause = nextClause;
     }
 
     public Class<?> getLeadingReferent() {
@@ -110,27 +113,61 @@ public abstract class ExpressionBuilder<Builder extends ExpressionBuilder<Builde
      * <p>
      * The other builder inherits any types defined in the this builder.
      */
-    public Builder or(Builder other) {
-	return mergeAfterLastExpression(null, null, closureOnMerge ? closure(other) : other, getOrOperator());
+    public <T extends Builder> Builder or(T other) {
+	return merge(null, null, closureOnMerge ? closure(other) : other, getOrOperator());
     }
-
-    protected abstract Operator getOrOperator();
 
     /**
      * Composes an AND expression between this and the other.
      * <p>
      * The other builder inherits any types defined in the this builder.
      */
-    public Builder and(Builder other) {
-	return mergeAfterLastExpression(null, null, closureOnMerge ? closure(other) : other, getAndOperator());
+    public <T extends Builder> Builder and(T other) {
+	return merge(null, null, closureOnMerge ? closure(other) : other, getAndOperator());
     }
 
-    protected abstract Operator getAndOperator();
+    protected String getOrOperator() {
+	return null;
+    }
+
+    protected String getAndOperator() {
+	return null;
+    }
 
     /**
      * Builds the expression and updates the parameter bindings.
      */
-    public abstract String build(Set<Class<?>> seenReferents, ParameterBinding bindings);
+    public String build(ParameterBinding bindings) {
+	final StringBuilder result = new StringBuilder();
+	if (previousClause != null) {
+	    result.append(build(previousClause, bindings)).append(" ");
+	}
+	result.append(build(this, bindings));
+	if (nextClause != null) {
+	    result.append(" ").append(build(nextClause, bindings));
+	}
+	return result.toString();
+    }
+
+    private String build(ClauseBuilder<?> builder, ParameterBinding bindings) {
+	builder.initializeBindings();
+
+	final StringBuilder appender = new StringBuilder();
+	builder.parseExpressions(appender, bindings);
+	if (appender.length() > 0) {
+	    final StringBuilder result = new StringBuilder();
+	    return result.append(builder.getPrefix()).append(appender).append(builder.getSuffix()).toString();
+	}
+	return "";
+    }
+
+    protected String getPrefix() {
+	return "";
+    }
+
+    protected String getSuffix() {
+	return "";
+    }
 
     protected void parseExpressions(StringBuilder appender, //
 	    ParameterBinding bindings) {
@@ -145,9 +182,13 @@ public abstract class ExpressionBuilder<Builder extends ExpressionBuilder<Builde
 	}
     }
 
-    protected abstract String getResolveFromSeparator();
-
     public void overwriteNullReferenceAndProperties(Class<?> referent, String property) {
+	if (previousClause != null) {
+	    previousClause.overwriteNullReferenceAndProperties(referent, property);
+	}
+	if (nextClause != null) {
+	    nextClause.overwriteNullReferenceAndProperties(referent, property);
+	}
 	for (Expression expression : getExpressions()) {
 	    expression.overwriteNullReferenceAndProperties(referent, property);
 	}
@@ -159,14 +200,20 @@ public abstract class ExpressionBuilder<Builder extends ExpressionBuilder<Builde
 	}
     }
 
-    protected Builder mergeAfterLastExpression(//
+    /**
+     * Updates this clause builder leading referent and leading property and merges after this clause last expression
+     * all other's expressions.
+     * <p>
+     * If an operator is specified, it is used to concatenate both this last and other's first expression.
+     */
+    public <Other extends Builder> Builder merge(//
 	    Class<?> referent, //
 	    String property, //
-	    Builder other, //
-	    Operator operator) {
+	    Other other, //
+	    String operator) {
 
 	if (operator != null) {
-	    other.getExpressions().addFirst(new OperatorExpression(operator.getSymbol()));
+	    getExpressions().addLast(new ConstantExpression(operator));
 	}
 	if (referent != null) {
 	    this.leadingReferent = referent;

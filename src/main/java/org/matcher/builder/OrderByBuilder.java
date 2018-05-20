@@ -21,31 +21,24 @@
  *******************************************************************************/
 package org.matcher.builder;
 
-import static org.matcher.expression.Expressions.SPACE;
+public class OrderByBuilder<T> extends HavingBuilder<T> {
 
-import java.util.Set;
-
-import org.matcher.expression.SelectExpression;
-import org.matcher.operator.Operator;
-import org.matcher.parameter.ParameterBinding;
-
-public abstract class AggregateBuilder<T, E extends AggregateBuilder<T, E>> extends SelectBuilder<T, E> {
-
-    public AggregateBuilder(SelectExpression<T> expression) {
-	super(expression);
+    public OrderByBuilder(Class<T> leadingReferent, String leadingProperty) {
+	super(leadingReferent, leadingProperty);
     }
 
     @Override
-    public String build(Set<Class<?>> seenReferents, ParameterBinding bindings) {
-	initializeBindings();
-
-	final StringBuilder aggregateClause = new StringBuilder();
-	parseExpressions(aggregateClause, bindings);
-	return new StringBuilder().append(aggregateClause).toString();
+    protected OrderByBuilder<T> getThis() {
+	return this;
     }
-    
+
     @Override
-    protected Operator getAndOperator() {
-	return SPACE;
+    public ClauseType getClauseType() {
+	return ClauseType.ORDER_BY;
+    }
+
+    @Override
+    protected String getPrefix() {
+	return "ORDER BY ";
     }
 }

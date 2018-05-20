@@ -22,6 +22,7 @@
 package org.matcher.bean;
 
 import static org.matcher.bean.BeanBasedMatcher.getPropertyName;
+import static org.matcher.bean.BeanBasedMatcher.getReferent;
 
 import java.util.Deque;
 import java.util.Set;
@@ -29,22 +30,19 @@ import java.util.Set;
 import org.matcher.bean.InvokationCapturer.Capture;
 import org.matcher.builder.WhereBuilder;
 import org.matcher.expression.Expression;
-import org.matcher.expression.OperatorExpression;
 import org.matcher.name.NameBasedWhereBuilder;
-import org.matcher.operator.Operator;
 import org.matcher.parameter.ParameterBinding;
 
-public class BeanBasedFromWhereBuilder extends WhereBuilder<BeanBasedFromWhereBuilder> {
+public class BeanBasedWhereBuilder extends WhereBuilder<BeanBasedWhereBuilder> {
 
     private final NameBasedWhereBuilder delegate;
 
-    public BeanBasedFromWhereBuilder(NameBasedWhereBuilder wrapped) {
-	super(wrapped.getLeadingReferent(), wrapped.getLeadingProperty());
+    public BeanBasedWhereBuilder(NameBasedWhereBuilder wrapped) {
 	this.delegate = wrapped;
     }
 
     @Override
-    protected BeanBasedFromWhereBuilder getThis() {
+    protected BeanBasedWhereBuilder getThis() {
 	return this;
     }
 
@@ -53,21 +51,30 @@ public class BeanBasedFromWhereBuilder extends WhereBuilder<BeanBasedFromWhereBu
 	return delegate.getExpressions();
     }
 
-    public <E> BeanBasedFromWhereBuilder or(E property, BeanBasedFromWhereBuilder other) {
+    protected NameBasedWhereBuilder getDelegate() {
+	return delegate;
+    }
+
+    @Override
+    public Set<Class<?>> getReferents() {
+	return delegate.getReferents();
+    }
+    
+    public <E> BeanBasedWhereBuilder or(E property, BeanBasedWhereBuilder other) {
 	final Capture lastCapture = InvokationCapturer.getLastCapture();
-	delegate.or(getPropertyName(lastCapture), other.delegate);
+	delegate.or(getReferent(lastCapture), getPropertyName(lastCapture), other.delegate);
 	return this;
     }
 
-    public <E> BeanBasedFromWhereBuilder and(E property, BeanBasedFromWhereBuilder other) {
+    public <E> BeanBasedWhereBuilder and(E property, BeanBasedWhereBuilder other) {
 	final Capture lastCapture = InvokationCapturer.getLastCapture();
-	delegate.and(getPropertyName(lastCapture), other.delegate);
+	delegate.and(getReferent(lastCapture), getPropertyName(lastCapture), other.delegate);
 	return this;
     }
 
     @Override
-    public String build(Set<Class<?>> seenReferents, ParameterBinding bindings) {
-	return delegate.build(seenReferents, bindings);
+    public String build(ParameterBinding bindings) {
+	return delegate.build(bindings);
     }
 
     @Override
@@ -76,15 +83,13 @@ public class BeanBasedFromWhereBuilder extends WhereBuilder<BeanBasedFromWhereBu
     }
 
     @Override
-    protected BeanBasedFromWhereBuilder mergeAfterLastExpression(//
+    public <Other extends BeanBasedWhereBuilder> BeanBasedWhereBuilder merge(//
 	    Class<?> referent, //
 	    String property, //
-	    BeanBasedFromWhereBuilder other, //
-	    Operator operator) {
+	    Other other, //
+	    String operator) {
 
-	other.delegate.getExpressions().addFirst(new OperatorExpression(operator.getSymbol()));
-	other.delegate.overwriteNullReferenceAndProperties(referent, property);
-	delegate.getExpressions().addAll(other.delegate.getExpressions());
+	getDelegate().merge(referent, property, other.getDelegate(), operator);
 	return getThis();
     }
 }

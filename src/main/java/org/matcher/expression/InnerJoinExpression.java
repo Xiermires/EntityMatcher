@@ -26,7 +26,6 @@ import static org.matcher.builder.BuilderUtils.getColumnName;
 import static org.matcher.builder.BuilderUtils.getTableName;
 import static org.matcher.builder.BuilderUtils.toAlias;
 
-import org.matcher.operator.Joiner;
 import org.matcher.parameter.ParameterBinding;
 
 public class InnerJoinExpression extends Expression {
@@ -34,10 +33,10 @@ public class InnerJoinExpression extends Expression {
     private final Class<?> otherReferent;
     private final String otherProperty;
 
-    public InnerJoinExpression(Joiner joiner, Class<?> joinReferent, String joinProperty) {
-	super(joiner.getSymbol());
+    public InnerJoinExpression(String joiner, Class<?> joinReferent, String joinProperty) {
 	this.otherReferent = joinReferent;
 	this.otherProperty = joinProperty;
+	setOperator(joiner);
     }
 
     @Override

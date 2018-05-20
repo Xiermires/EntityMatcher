@@ -21,34 +21,14 @@
  *******************************************************************************/
 package org.matcher.expression;
 
-import static org.matcher.expression.Expressions.NONE;
+/**
+ * 
+ * Operators implementing this interface can be negated.
+ */
+public interface Negatable {
 
-import org.matcher.operator.Operator;
-
-public class AggregateExpression<T> extends SelectExpression<T> {
-
-    public AggregateExpression(Operator operator) {
-	super(operator);
-    }
-    
-    public AggregateExpression(Class<T> referent) {
-	super(referent);
-    }
-
-    public AggregateExpression(Class<T> referent, SelectExpression<?> expression) {
-	super(NONE);
-	setReferent(referent);
-	addChild(expression);
-    }
-    
-    public AggregateExpression(AggregateExpression<T> expression) {
-	super(NONE);
-	addChild(expression);
-    }
-    
-    public AggregateExpression(Operator operator, Class<T> referent, String property) {
-	super(operator);
-	setProperty(property);
-	setReferent(referent);
-    }
+    /**
+     * Negates an expression.
+     */
+    void negate();
 }

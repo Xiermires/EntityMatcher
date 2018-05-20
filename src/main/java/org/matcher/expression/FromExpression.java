@@ -23,18 +23,12 @@ package org.matcher.expression;
 
 import static org.matcher.builder.BuilderUtils.getTableName;
 import static org.matcher.builder.BuilderUtils.toAlias;
-import static org.matcher.expression.Expressions.NONE;
 
 import org.matcher.parameter.ParameterBinding;
 
 public class FromExpression extends Expression {
 
-    public FromExpression() {
-	super(NONE.getSymbol());
-    }
-
     public FromExpression(Class<?> referent) {
-	super(NONE.getSymbol());
 	setReferent(referent);
     }
 

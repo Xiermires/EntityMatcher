@@ -30,18 +30,15 @@ import org.matcher.parameter.ParameterBinding;
 import org.matcher.util.Arborescence;
 import org.matcher.util.Node;
 
-public abstract class Expression extends Arborescence<Expression> {
+public class Expression extends Arborescence<Expression> {
 
-    private String operator;
+    private String operator = "";
 
     private Class<?> referent;
     private String property;
 
-    protected Expression() {
-    }
-    
-    public Expression(String operator) {
-	this.operator = operator;
+    public Expression() {
+	setData(this);
     }
 
     /**
