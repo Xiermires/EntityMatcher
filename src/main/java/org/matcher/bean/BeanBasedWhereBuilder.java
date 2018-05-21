@@ -38,6 +38,7 @@ public class BeanBasedWhereBuilder extends WhereBuilder<BeanBasedWhereBuilder> {
     private final NameBasedWhereBuilder delegate;
 
     public BeanBasedWhereBuilder(NameBasedWhereBuilder wrapped) {
+	super(null, null);
 	this.delegate = wrapped;
     }
 
@@ -59,7 +60,7 @@ public class BeanBasedWhereBuilder extends WhereBuilder<BeanBasedWhereBuilder> {
     public Set<Class<?>> getReferents() {
 	return delegate.getReferents();
     }
-    
+
     public <E> BeanBasedWhereBuilder or(E property, BeanBasedWhereBuilder other) {
 	final Capture lastCapture = InvokationCapturer.getLastCapture();
 	delegate.or(getReferent(lastCapture), getPropertyName(lastCapture), other.delegate);

@@ -23,7 +23,6 @@ package org.matcher.name;
 
 import java.util.Collection;
 
-import org.matcher.builder.ClauseBuilder;
 import org.matcher.builder.GroupByBuilder;
 import org.matcher.builder.OrderByBuilder;
 import org.matcher.expression.BetweenExpression;
@@ -148,23 +147,39 @@ public class NameBasedExpressions extends Expressions {
      */
     public static NameBasedWhereBuilder matching(Class<?> other, String otherProperty) {
 	final Expression expression = new JoinQualifierExpression(EQUALS, NOT_EQUALS, other, otherProperty);
-	final NameBasedWhereBuilder builder = new NameBasedWhereBuilder(expression);
-	return matching(null, otherProperty, builder);
+	final NameBasedWhereBuilder builder = new NameBasedWhereBuilder(null, null);
+	builder.getExpressions().add(expression);
+	return matching(null, null, builder);
+    }
+
+    /**
+     * An inner join expression.
+     * <p>
+     * Equivalent to ?.property = other.property
+     */
+    public static NameBasedWhereBuilder matching(String property, Class<?> firstOther, Class<?>... others) {
+	final NameBasedWhereBuilder matching = matching(property, matching(firstOther, property));
+	for (Class<?> other : others) {
+	    matching.merge(null, null, matching(property, matching(other, property)), AND);
+	}
+	return matching;
     }
 
     /**
      * Typifies the {@code builder} and all its children with a column property.
      */
-    public static <T extends ClauseBuilder<T>> T matching(String property, T builder) {
+    public static NameBasedWhereBuilder matching(String property, NameBasedWhereBuilder builder) {
 	return matching(null, property, builder);
     }
 
     /**
      * Typifies the {@code builder} and all its children with a referent table and a column property.
      */
-    public static <T extends ClauseBuilder<T>> T matching(Class<?> referent, String property, T builder) {
-	builder.overwriteNullReferenceAndProperties(referent, property);
-	return builder;
+    public static NameBasedWhereBuilder matching(Class<?> referent, String property, NameBasedWhereBuilder builder) {
+	final NameBasedWhereBuilder newBuilder = new NameBasedWhereBuilder(referent, property);
+	builder.overwriteNullReferenceAndProperties(builder.getLeadingReferent(), builder.getLeadingProperty());
+	newBuilder.merge(referent, property, builder, null);
+	return newBuilder;
     }
 
     // expressions

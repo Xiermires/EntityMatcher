@@ -199,14 +199,13 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testSingleJoin() {
-	final List<TestClass> joins = matcher.findAny(TestClass.class, matching(TestJoin.class, "bar"));
+	final List<TestClass> joins = matcher.findAny(TestClass.class, matching("bar", TestJoin.class));
 	assertThat(joins.size(), is(2));
     }
 
     @Test
     public void testMultipleJoin() {
-	final TestClass join = matcher.find(TestClass.class, matching(TestJoin.class, "bar").//
-		and(matching(TestOther.class, "bar")));
+	final TestClass join = matcher.find(TestClass.class, matching("bar", TestJoin.class, TestOther.class));
 	assertThat(join, is(Matchers.not(nullValue())));
     }
 
@@ -277,10 +276,9 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testMax() {
-	final Integer max = matcher.findUnique(Integer.class, //
-		max(TestClass.class, "foo"), matching("foo", between(3, 5)));
+	final Integer max = matcher.findUnique(Integer.class, max(TestClass.class, "foo"));
 	assertThat(max, is(Matchers.not(nullValue())));
-	assertThat(max, is(5));
+	assertThat(max, is(6));
     }
 
     @Test
@@ -357,7 +355,7 @@ public class NameBasedEntityMatcherTest {
     public void testHavingCount() {
 	final String testee = matcher.findUnique(String.class, //
 		selection(TestOther.class, "bar"), //
-		groupBy("bar").//
+		groupBy("bar"). //
 			having(count("bar"), gt(1L)));
 	assertThat(testee, is("Snake"));
     }
@@ -376,15 +374,21 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void tryMatchingSignatures() {
-	NameBasedWhereBuilder builder = matching("bar", like("Hell%")).//
-		and(TestOther.class, "bar", like("Hell%").or(like("Bye"))).//
-		or("foo", gt(5).//
-			and(matching(TestOther.class, "bar")));
 
-	builder.overwriteNullReferenceAndProperties(TestClass.class, null);
-	final String queryTxt = builder.build(new ParameterBindingImpl());
+	System.out.println(matching(TestClass.class, "foo", eq(24)).and(TestJoin.class, "bar", eq("Fluffy"))
+		.and(matching("bar", matching(TestJoin.class, "foo"))).build(new ParameterBindingImpl()));
+	System.out.println(matching(TestClass.class, "foo", eq("xoo"))//
+		.and("bar", eq("Fluffy")//
+			.and("foo", eq(25))//
+			.and(TestJoin.class, "bar", like("foo")).or(like("bar"))).build(new ParameterBindingImpl()));
 
-	System.out.println(queryTxt);
+	System.out.println(matching(TestClass.class, "foo", eq("Xiermires"))
+		.and(matching(TestJoin.class, "bar", eq("Fluffy"))).and("foo", gt(10))
+		.and("bar", matching(TestJoin.class, "bar")).build(new ParameterBindingImpl()));
+
+	System.out.println(matching(TestClass.class, "foo", eq("Xiermires"))
+		.and(matching(TestJoin.class, "bar", eq("Fluffy").and("foo", gt(10))))
+		.and("bar", matching(TestJoin.class, "bar")).build(new ParameterBindingImpl()));
 
     }
 }

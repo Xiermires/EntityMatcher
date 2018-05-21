@@ -31,6 +31,7 @@ public class Expressions {
 
     public static final String OR = " OR ";
     public static final String AND = " AND ";
+    public static final String SPACE = " ";
 
     public static final ConstantExpression COMMA = new ConstantExpression(", ");
     public static final ConstantExpression OPEN = new ConstantExpression(" ( ");

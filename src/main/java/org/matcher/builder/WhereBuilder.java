@@ -24,8 +24,6 @@ package org.matcher.builder;
 import static org.matcher.expression.Expressions.AND;
 import static org.matcher.expression.Expressions.OR;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
 import org.matcher.expression.Expression;
@@ -33,26 +31,19 @@ import org.matcher.expression.JoinQualifierExpression;
 
 public abstract class WhereBuilder<T extends WhereBuilder<T>> extends ClauseBuilder<T> {
 
-    final List<JoinQualifierExpression> joins = new ArrayList<>();
-
-    protected WhereBuilder() {
-	super(null, null);
-    }
-
-    protected WhereBuilder(Expression expression) {
-	super(expression.getReferent(), expression.getProperty());
-	getExpressions().add(expression);
-	if (expression instanceof JoinQualifierExpression) {
-	    joins.add((JoinQualifierExpression) expression);
-	}
+    protected WhereBuilder(Class<?> referent, String property) {
+	super(referent, property);
 	setClosureOnMerge(true);
     }
 
     @Override
     public Set<Class<?>> getReferents() {
 	final Set<Class<?>> referents = super.getReferents();
-	for (JoinQualifierExpression join : joins) {
-	    referents.add(join.getOtherReferent());
+	for (Expression expression : getExpressions()) {
+	    if (expression instanceof JoinQualifierExpression) {
+		final JoinQualifierExpression joinExpression = (JoinQualifierExpression) expression;
+		referents.add(joinExpression.getOtherReferent());
+	    }
 	}
 	return referents;
     }
@@ -75,17 +66,5 @@ public abstract class WhereBuilder<T extends WhereBuilder<T>> extends ClauseBuil
     @Override
     protected String getAndOperator() {
 	return AND;
-    }
-
-    @Override
-    public <E extends T> T merge(//
-	    Class<?> referent, //
-	    String property, //
-	    E other, //
-	    String operator) {
-
-	super.merge(referent, property, other, operator);
-	joins.addAll(other.joins);
-	return getThis();
     }
 }

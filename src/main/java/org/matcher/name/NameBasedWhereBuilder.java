@@ -24,6 +24,7 @@ package org.matcher.name;
 import static org.matcher.expression.Expressions.AND;
 import static org.matcher.expression.Expressions.OR;
 import static org.matcher.expression.Expressions.closure;
+import static org.matcher.name.NameBasedExpressions.matching;
 
 import java.util.Iterator;
 
@@ -42,8 +43,14 @@ import org.matcher.parameter.ParameterBinding;
  */
 public class NameBasedWhereBuilder extends WhereBuilder<NameBasedWhereBuilder> {
 
-    public NameBasedWhereBuilder(Expression expression) {
-	super(expression);
+    public NameBasedWhereBuilder(Class<?> referent, String property) {
+	super(referent, property);
+    }
+
+    // syntax sugar
+    NameBasedWhereBuilder(Expression expression) {
+	super(expression.getReferent(), expression.getProperty());
+	getExpressions().add(expression);
     }
 
     @Override
@@ -58,7 +65,8 @@ public class NameBasedWhereBuilder extends WhereBuilder<NameBasedWhereBuilder> {
      * builder.
      */
     public NameBasedWhereBuilder or(String property, NameBasedWhereBuilder other) {
-	return merge(null, property, closure(other), OR);
+	other = matching(null, property, other);
+	return merge(getLeadingReferent(), property, closure(other), OR);
     }
 
     /**
@@ -67,6 +75,7 @@ public class NameBasedWhereBuilder extends WhereBuilder<NameBasedWhereBuilder> {
      * The other builder is typified with {@code referent} and {@code property}.
      */
     public NameBasedWhereBuilder or(Class<?> referent, String property, NameBasedWhereBuilder other) {
+	other = matching(referent, property, other);
 	return merge(referent, property, closure(other), OR);
     }
 
@@ -77,7 +86,8 @@ public class NameBasedWhereBuilder extends WhereBuilder<NameBasedWhereBuilder> {
      * builder.
      */
     public NameBasedWhereBuilder and(String property, NameBasedWhereBuilder other) {
-	return merge(null, property, closure(other), AND);
+	other = matching(null, property, other);
+	return merge(getLeadingReferent(), property, closure(other), AND);
     }
 
     /**
@@ -86,6 +96,7 @@ public class NameBasedWhereBuilder extends WhereBuilder<NameBasedWhereBuilder> {
      * The other builder is typified with {@code referent} and {@code property}.
      */
     public NameBasedWhereBuilder and(Class<?> referent, String property, NameBasedWhereBuilder other) {
+	other = matching(referent, property, other);
 	return merge(referent, property, closure(other), AND);
     }
 

@@ -114,7 +114,8 @@ public abstract class ClauseBuilder<Builder extends ClauseBuilder<Builder>> {
      * The other builder inherits any types defined in the this builder.
      */
     public <T extends Builder> Builder or(T other) {
-	return merge(null, null, closureOnMerge ? closure(other) : other, getOrOperator());
+	return merge(getLeadingReferent(), getLeadingProperty(), closureOnMerge ? closure(other) : other,
+		getOrOperator());
     }
 
     /**
@@ -123,7 +124,8 @@ public abstract class ClauseBuilder<Builder extends ClauseBuilder<Builder>> {
      * The other builder inherits any types defined in the this builder.
      */
     public <T extends Builder> Builder and(T other) {
-	return merge(null, null, closureOnMerge ? closure(other) : other, getAndOperator());
+	return merge(getLeadingReferent(), getLeadingProperty(), closureOnMerge ? closure(other) : other,
+		getAndOperator());
     }
 
     protected String getOrOperator() {
@@ -183,14 +185,16 @@ public abstract class ClauseBuilder<Builder extends ClauseBuilder<Builder>> {
     }
 
     public void overwriteNullReferenceAndProperties(Class<?> referent, String property) {
-	if (previousClause != null) {
-	    previousClause.overwriteNullReferenceAndProperties(referent, property);
-	}
-	if (nextClause != null) {
-	    nextClause.overwriteNullReferenceAndProperties(referent, property);
-	}
-	for (Expression expression : getExpressions()) {
-	    expression.overwriteNullReferenceAndProperties(referent, property);
+	if (referent != null || property != null) {
+	    if (previousClause != null) {
+		previousClause.overwriteNullReferenceAndProperties(referent, property);
+	    }
+	    if (nextClause != null) {
+		nextClause.overwriteNullReferenceAndProperties(referent, property);
+	    }
+	    for (Expression expression : getExpressions()) {
+		expression.overwriteNullReferenceAndProperties(referent, property);
+	    }
 	}
     }
 
@@ -206,20 +210,16 @@ public abstract class ClauseBuilder<Builder extends ClauseBuilder<Builder>> {
      * <p>
      * If an operator is specified, it is used to concatenate both this last and other's first expression.
      */
-    public <Other extends Builder> Builder merge(//
+    public <Other extends Builder> Builder merge( //
 	    Class<?> referent, //
 	    String property, //
 	    Other other, //
 	    String operator) {
 
+	other.overwriteNullReferenceAndProperties(referent, property);
+	
 	if (operator != null) {
 	    getExpressions().addLast(new ConstantExpression(operator));
-	}
-	if (referent != null) {
-	    this.leadingReferent = referent;
-	}
-	if (property != null) {
-	    this.leadingProperty = property;
 	}
 	getExpressions().addAll(other.getExpressions());
 	return getThis();

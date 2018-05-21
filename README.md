@@ -4,12 +4,19 @@ Enhance an EntityManager to create JPQL queries through matchers.
 
 The matchers can be created both using the names of the Entities properties, or a Entity matching "mock" conveniently prepared to capture method invokations.
 
-```final Person mtch = BeanBasedMatcher.matcher(Person.class);```
+This WHERE statement...
 
-The following matchers are equivalent.
+```sql WHERE person.name LIKE 'X%' OR person.surname LIKE 'Y%' OR person.eyes = 'blue'```
 
-```java matching("name", startsWith("X").or("Y")).or("eyes", eq("blue"))```
-```java matching(mtch.getName(), startsWith("X").or("Y")).or(mtch.getEyes(), eq("blue"))```
+is equivalent to the following generated matchers.
+
+```java matching(Person.class, "name", startsWith("X").or("surname", startsWith("Y")).or("eyes", eq("blue")))```
+```java 
+final Person mtch = BeanBasedMatcher.matcher(Person.class);
+matching(mtch.getName(), startsWith("X").or(startsWith("Y")).or(mtch.getEyes(), eq("blue")))
+```
+
+From now on, we will focus only in the using names approach, although examples can be easily switched to its bean alternative.
 
 ### Step 0. Configuration
 
@@ -48,13 +55,91 @@ final EntityManager em = Persistence.createEntityManagerFactory("test").createEn
 final EntityMatcher matcher = new EntityMatcher(em);
 ```
 
-### Step 2. Using the matcher
+### Step 2. Usage
 
-Let's assume a SQL Table 'Person' with properties 'name', 'surname', 'height_cm', 'weight_kg'
+Let's assume the following two SQL Tables
+
+1. 'Person' with properties 'name', 'height_cm', 'weight_kg', 'age'
+2. 'Pet' with properties 'name', 'owner', 'species', 'age'
+
+#### The basics
 
 + natural: find any person named Xiermires and who weights more than 70 kg
 + JPQL: ```sql SELECT person FROM Person person WHERE person.name = 'Xiermires' AND person.weight_kg > 70```
-+ matcher: ```java matcher.findAny(Person.class, matching("name", eq("Xiermires")).and("weight_kg, gt(70)))```
++ matcher: ```java matcher.findAny(Person.class, matching("name", eq("Xiermires")).and("weight_kg", gt(70)))```
 
-In similar fashion we can use 
++ natural: find person names which start by X and whose aged is between 25 and 50
++ JPQL: ```sql SELECT person FROM Person person WHERE person.name LIKE 'X%' AND person.age BETWEEN 25 AND 50```
++ matcher: ```java matcher.findAny(String.class, selection(Person.class, "name"), matching("name", startsWith("X")).and("age", between(25, 50)))```
 
++ natural: find any person which name is also a pet name
++ JPQL: ```sql SELECT person FROM Person person, Pet pet WHERE person.name = pet.name```
++ matcher: ```java matcher.findAny(Person.class, matching("name", Pet.class))
+
++ natural: find any pet which name is also a pet name
++ JPQL: ```sql SELECT person FROM Person person, Pet pet WHERE person.name = pet.name```
++ matcher: ```java matcher.findAny(Person.class, matching("name", Pet.class))
+
+#### Parenthesis I
+
+Matchers use implicit precedence, where any AND or OR right side terms are automatically between parenthesis, the following expressions look alike but their their precedence and expected results are different.
+
++ natural: find any person older than 20 and named either Xiermires or Serimreix
++ JPQL: ```sql SELECT person FROM Person person WHERE person.age > 20 AND ( person.name 'Xiermires' OR person.name = 'Serimreix' )```
++ matcher: ```java matcher.findAny(Person.class, matching("age", gt(20)).and("name", eq("Xiermires").or("Serimreix")))```
+
++ natural: find any person older than 20 named Xiermires, or any other named Serimreix
++ JPQL: ```sql SELECT person FROM Person person WHERE person.age > 20 AND person.name = 'Xiermires' OR person.name = 'Serimreix'```
++ matcher: ```java matcher.findAny(Person.class, matching("age", gt(20).and("name", eq("Xiermires").or("Serimreix"))))```
+
+Parenthesis can be explicitly defined if desired using the closure() method.
+
++ matcher: ```java matcher.findAny(Person.class, closure(matching("name", eq("Xiermires")).or("name", eq("Serimreix")))).and("age", gt(20)))```
+
+#### Parenthesis II
+
+Parenthesis also determine the leading table or column of an expression.
+
+matching**(**Person.class, "name", eq("Xiermires")).and(matching**(**Pet.class, "name", eq("Fluffy"))**)**.and("age", gt(10)**)**
+
+> WHERE person.name = 'Xiermires' AND pet.name = 'Fluffy' AND person.age > 10
+
+matching**(**Person.class, "name", eq("Xiermires")).and(matching**(**Pet.class, "name", eq("Fluffy").and("age", gt(10))**))**
+
+> WHERE person.name = 'Xiermires' and pet.name = 'Fluffy' and pet.age > 10
+
+#### Not support
+
+Any expression, or collection of expressions, can be negated by using the not() method. 
+
++ natural: find any person not aged more than 25
++ matcher: ```java matcher.findAny(Person.class, matching("age", not(gt(25))))```
++ JPQL: ```sql SELECT person FROM Person person WHERE person.age < 25```
+
+#### Group by, Order by, Having
+
+Group by, order by and having clauses are all supported.
+
+natural: find any person total owned pets
+JPQL: ```sql SELECT COUNT(person.name) FROM Person person, Pet pet WHERE person.name = pet.owner GROUP BY person.name```
+matcher: ```java matcher.findAny(Long.class, count(Person.class, "name"), matching("name", matching(Pet.class, "owner")), groupBy("name"))```
+
+natural: find all person order by name
+JPQL: ```sql SELECT person FROM Person person ORDER BY person.name```
+matcher: ```java matcher.findAny(Person.class, orderBy("name"))```
+
+natural: find person names of people owning more than 2 pets 
+JPQL: ```sql SELECT person.name FROM Person person, Pet pet WHERE person.name = pet.owner GROUP BY person.name HAVING COUNT(person.name) > 2```
+matcher: ```java matcher.findAny(selection(Person.class, "name"), matching("name", matching(Pet.class, "owner")), groupBy("name").having(count("name"), gt(2)))```
+
+#### Functions
+
+The following functions are supported { DISTINCT, COUNT, MIN, MAX, SUM, AVG }. 
+
+natural: find the max age of any person
+JPQL: ```sql SELECT MAX(person.age) FROM Person person```
+matcher: ```java matcher.find(Long.class, max(Person.class, "age"))```
+
+natural: find any person order by amount of owned pets 
+JPQL: ```sql SELECT person, person.name FROM Person person, Pet pet WHERE person.name = pet.owner GROUP BY person.name ORDER BY COUNT(person.name)```
+matcher: ```java matcher.findAny(Person.class, matching("name", matching(Pet.class, "owner")), groupBy("name").orderBy(count("name")))```

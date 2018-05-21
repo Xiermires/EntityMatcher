@@ -95,10 +95,10 @@ public class Expression extends Arborescence<Expression> {
     }
 
     public void overwriteNullReferenceAndProperties(Class<?> referent, String property) {
-	if (getReferent() == null) {
+	if (referent != null && getReferent() == null) {
 	    setReferent(referent);
 	}
-	if (getProperty() == null) {
+	if (property != null && getProperty() == null) {
 	    setProperty(property);
 	}
 	getChildren().forEach(node -> node.getData().overwriteNullReferenceAndProperties(referent, property));
