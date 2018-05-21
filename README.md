@@ -53,7 +53,23 @@ final EntityManager em = Persistence.createEntityManagerFactory("test").createEn
 final EntityMatcher matcher = new EntityMatcher(em);
 ```
 
-### Step 2. Usage
+### Step 2. The find and findAny methods
+
+The find method retrieves a single element from the underlying DB satisfying the matchers. The element must be unique.
+The findAny method retrieves any elements from the underlying DB satisfying the matchers. 
+
+Both methods follow a similar structure.
+
+matcher.find(return type, selection, matching, [ group by, having, order by] ).
+
+Pretty much everything except the return type is optional.
+
+For instance
+
+1) ```matcher.findAny(Person.class)``` returns all elements inside the Person table.
+2) ```matcher.find(Person.class, matching("name", eq("Xiermires")))``` returns the only person named Xiermires.
+
+### Step 3. Usage
 
 Let's assume the following two SQL Tables
 
@@ -149,3 +165,30 @@ The following functions are supported { DISTINCT, COUNT, MIN, MAX, SUM, AVG }.
 + natural: find any person order by amount of owned pets 
 + JPQL: ```SELECT person, person.name FROM Person person, Pet pet WHERE person.name = pet.owner GROUP BY person.name ORDER BY COUNT(person.name)```
 + matcher: ```matcher.findAny(Person.class, matching("name", matching(Pet.class, "owner")), groupBy("name").orderBy(count("name")))```
+
+### Step 4. Syntax sugar
+
+Once you have an established data model, it is easy to write syntax sugar matchers that wrap the standard ones and produce closer to natural language expressions.
+
+For instance, let's assume a couple of tables.
+
+1) Person { id, name }
+2) Address { id, person_id, location }
+
+```matcher.findAny(Person.class, named("Xiermires").and(livesIn("Dresden")))```
+
+looks clearer than...
+
+```matcher.findAny(Person.class, matching("name", "Xiermires").and(Address.class, "location", eq("Dresden")).and(matching("id", matching(Address.class, "person_id")))))```
+
+Matchers would like as follows...
+
+```java
+    public static NameBasedWhereBuilder named(String name) {
+	return matching(null, "name", eq(name));
+    }
+    
+    public static NameBasedWhereBuilder livesIn(String city) {
+	return matching("id", matching(Address.class, "person_id")).and(location, eq(city));
+    }
+```
