@@ -28,6 +28,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.matcher.bean.InvokationCapturer.Capture;
+import org.matcher.builder.OrderByBuilder;
 import org.matcher.expression.Expressions;
 import org.matcher.expression.FunctionExpression;
 import org.matcher.expression.TypedExpression;
@@ -64,11 +65,11 @@ public class BeanBasedExpressions extends Expressions {
     public static <T> FunctionExpression<?> max(T capture) {
 	return createFunction(MAX, capture);
     }
-    
+
     public static <T> FunctionExpression<?> avg(T capture) {
 	return createFunction(AVG, capture);
     }
-    
+
     public static <T> FunctionExpression<?> sum(T capture) {
 	return createFunction(SUM, capture);
     }
@@ -99,6 +100,48 @@ public class BeanBasedExpressions extends Expressions {
 	return expression;
     }
 
+    // group by
+
+    /**
+     * A group by expression, where each property belongs to the leading query referent.
+     * <p>
+     * i.e. {@code groupBy("foo", "bar")} translates as {@code GROUP BY ?.foo, ?.bar}.
+     */
+    public static BeanBasedGroupByBuilder<?> groupBy(Object capture, Object... others) {
+	final BeanBasedGroupByBuilder<?> builder = new BeanBasedGroupByBuilder<>(null, null);
+	final TypedExpression<?> leading = new TypedExpression<>(null);
+	final List<Capture> lastCaptures = InvokationCapturer.getLastCaptures(others.length + 1);
+	leading.addChild(toExpression(lastCaptures.get(lastCaptures.size() - 1)));
+	// revert stacked captures to maintain selection order
+	for (int i = lastCaptures.size() - 2; i >= 0; i--) {
+	    leading.addChild(COMMA);
+	    leading.addChild(toExpression(lastCaptures.get(i)));
+	}
+	builder.getExpressions().add(leading);
+	return builder;
+    }
+
+    // order by
+
+    /**
+     * An order by expression, where each property belongs to the leading query referent.
+     * <p>
+     * i.e. {@code orderBy("foo", "bar")} translates as {@code ORDER BY ?.foo, ?.bar}.
+     */
+    public static <T> OrderByBuilder<T> orderBy(Object capture, Object... others) {
+	final OrderByBuilder<T> builder = new OrderByBuilder<>(null, null);
+	final TypedExpression<?> leading = new TypedExpression<>(null);
+	final List<Capture> lastCaptures = InvokationCapturer.getLastCaptures(others.length + 1);
+	leading.addChild(toExpression(lastCaptures.get(lastCaptures.size() - 1)));
+	// revert stacked captures to maintain selection order
+	for (int i = lastCaptures.size() - 2; i >= 0; i--) {
+	    leading.addChild(COMMA);
+	    leading.addChild(toExpression(lastCaptures.get(i)));
+	}
+	builder.getExpressions().add(leading);
+	return builder;
+    }
+
     // matchers
 
     /**
@@ -118,7 +161,7 @@ public class BeanBasedExpressions extends Expressions {
 	final Class<?> referent = getReferent(lastCapture);
 	final String property = getPropertyName(lastCapture);
 
-	return new BeanBasedWhereBuilder(NameBasedExpressions.matching(referent, property));
+	return new BeanBasedWhereBuilder(NameBasedExpressions.matching(property, referent));
     }
 
     // expressions
@@ -141,6 +184,24 @@ public class BeanBasedExpressions extends Expressions {
      */
     public static BeanBasedWhereBuilder like(Object value) {
 	return new BeanBasedWhereBuilder(NameBasedExpressions.like(value));
+    }
+
+    /**
+     * Starts with syntax sugar.
+     * <p>
+     * i.e. {@code startsWith("foo")} translates as {@code ?.? LIKE 'foo%'}.
+     */
+    public static BeanBasedWhereBuilder startsWith(String value) {
+	return new BeanBasedWhereBuilder(NameBasedExpressions.like(value + "%"));
+    }
+
+    /**
+     * Ends with syntax sugar.
+     * <p>
+     * i.e. {@code startsWith("foo")} translates as {@code ?.? LIKE 'foo%'}.
+     */
+    public static BeanBasedWhereBuilder endsWith(String value) {
+	return new BeanBasedWhereBuilder(NameBasedExpressions.like("%" + value));
     }
 
     /**

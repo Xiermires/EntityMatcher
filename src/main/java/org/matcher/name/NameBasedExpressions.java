@@ -23,7 +23,6 @@ package org.matcher.name;
 
 import java.util.Collection;
 
-import org.matcher.builder.GroupByBuilder;
 import org.matcher.builder.OrderByBuilder;
 import org.matcher.expression.BetweenExpression;
 import org.matcher.expression.Expression;
@@ -119,8 +118,8 @@ public class NameBasedExpressions extends Expressions {
      * <p>
      * i.e. {@code groupBy("foo", "bar")} translates as {@code GROUP BY ?.foo, ?.bar}.
      */
-    public static <T> GroupByBuilder<T> groupBy(String property, String... others) {
-	final GroupByBuilder<T> builder = new GroupByBuilder<>(null, null);
+    public static <T> NameBasedGroupByBuilder<T> groupBy(String property, String... others) {
+	final NameBasedGroupByBuilder<T> builder = new NameBasedGroupByBuilder<>(null, null);
 	addCommaSeparatedExpressions(builder, toExpression(property), toExpressions(others));
 	return builder;
     }

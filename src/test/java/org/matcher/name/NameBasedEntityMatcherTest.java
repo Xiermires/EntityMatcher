@@ -104,14 +104,14 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testEq() {
-	final TestClass testee = matcher.find(TestClass.class, matching("bar", eq("Hello")));
+	final TestClass testee = matcher.findUnique(TestClass.class, matching("bar", eq("Hello")));
 	assertThat(testee, is(Matchers.not(nullValue())));
 	assertThat(testee.getBar(), is("Hello"));
     }
 
     @Test
     public void testEqNull() {
-	final TestClass testee = matcher.find(TestClass.class, matching("bar", eq(null)));
+	final TestClass testee = matcher.findUnique(TestClass.class, matching("bar", eq(null)));
 	assertThat(testee, is(Matchers.not(nullValue())));
 	assertThat(testee.getBar(), is(nullValue()));
     }
@@ -127,23 +127,23 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testLike() {
-	final TestClass testee = matcher.find(TestClass.class, matching("bar", like("Hell%")));
+	final TestClass testee = matcher.findUnique(TestClass.class, matching("bar", like("Hell%")));
 	assertThat(testee, is(Matchers.not(nullValue())));
 	assertThat(testee.getBar(), Matchers.startsWith("Hell"));
     }
 
     @Test
     public void testStartsWith() {
-	final TestClass testee = matcher.find(TestClass.class, matching("bar", startsWith("Hell")));
+	final TestClass testee = matcher.findUnique(TestClass.class, matching("bar", startsWith("Hell")));
 	assertThat(testee, is(Matchers.not(nullValue())));
 	assertThat(testee.getBar(), Matchers.startsWith("Hell"));
     }
 
     @Test
     public void testEndsWith() {
-	final TestClass testee = matcher.find(TestClass.class, matching("bar", endsWith("ello")));
+	final TestClass testee = matcher.findUnique(TestClass.class, matching("bar", endsWith("ello")));
 	assertThat(testee, is(Matchers.not(nullValue())));
-	assertThat(testee.getBar(), Matchers.startsWith("Hell"));
+	assertThat(testee.getBar(), Matchers.endsWith("ello"));
     }
 
     @Test
@@ -174,7 +174,7 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testAndSameTableDifferentProperties() {
-	final TestClass tc = matcher.find(TestClass.class, matching("foo", lt(4)).and("bar", eq("Bye")));
+	final TestClass tc = matcher.findUnique(TestClass.class, matching("foo", lt(4)).and("bar", eq("Bye")));
 	assertThat(tc.getFoo(), is(lessThan(4)));
 	assertThat(tc.getBar(), is("Bye"));
     }
@@ -205,7 +205,7 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testMultipleJoin() {
-	final TestClass join = matcher.find(TestClass.class, matching("bar", TestJoin.class, TestOther.class));
+	final TestClass join = matcher.findUnique(TestClass.class, matching("bar", TestJoin.class, TestOther.class));
 	assertThat(join, is(Matchers.not(nullValue())));
     }
 
@@ -247,7 +247,7 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testSelectSingleProperty() {
-	final List<Integer> foos = matcher.find(Integer.class, selection(TestClass.class, "foo"),
+	final List<Integer> foos = matcher.findAny(Integer.class, selection(TestClass.class, "foo"),
 		matching("foo", between(3, 5)));
 	assertThat(foos, is(Matchers.not(nullValue())));
 	for (Integer foo : foos) {
@@ -313,7 +313,7 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testDistinctList() {
-	final List<String> bars = matcher.find(String.class, distinct(TestOther.class, "bar"));
+	final List<String> bars = matcher.findAny(String.class, distinct(TestOther.class, "bar"));
 	assertThat(bars.size(), is(2));
 	assertThat(bars, containsInAnyOrder("Snake", "Hello"));
     }
@@ -327,7 +327,7 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testGroupBy() {
-	final List<Object[]> tos = matcher.find(Object[].class, selection(TestOther.class, "bar").and(count("bar")),
+	final List<Object[]> tos = matcher.findAny(Object[].class, selection(TestOther.class, "bar").and(count("bar")),
 		groupBy("bar"));
 	assertThat(tos.size(), is(2));
     }
@@ -345,7 +345,7 @@ public class NameBasedEntityMatcherTest {
 
     @Test
     public void testOrderByFunction() {
-	final List<String> tos = matcher.find(String.class, selection(TestOther.class, "bar"),
+	final List<String> tos = matcher.findAny(String.class, selection(TestOther.class, "bar"),
 		groupBy("bar").orderBy(count("bar")));
 	assertThat(tos.size(), is(2));
 	assertThat(tos, contains("Hello", "Snake"));
@@ -361,9 +361,8 @@ public class NameBasedEntityMatcherTest {
     }
 
     @Test
-    // FIXME
     public void testMultipleHaving() {
-	final List<Object[]> testee = matcher.find(Object[].class, //
+	final List<Object[]> testee = matcher.findAny(Object[].class, //
 		selection(TestOther.class, "bar").and(sum("foo")), //
 		groupBy("bar", "foo").//
 			having(count("bar"), gt(0L)).//

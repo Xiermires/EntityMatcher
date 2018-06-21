@@ -21,7 +21,11 @@
  *******************************************************************************/
 package org.matcher.bean;
 
+import static org.matcher.bean.BeanBasedExpressions.selection;
+import static org.matcher.expression.Expressions.COMMA;
+
 import org.matcher.builder.SelectBuilder;
+import org.matcher.expression.FunctionExpression;
 import org.matcher.expression.TypedExpression;
 
 public class BeanBasedSelectBuilder<T> extends SelectBuilder<T, BeanBasedSelectBuilder<T>> {
@@ -33,6 +37,18 @@ public class BeanBasedSelectBuilder<T> extends SelectBuilder<T, BeanBasedSelectB
 
     @Override
     protected BeanBasedSelectBuilder<T> getThis() {
+	return this;
+    }
+
+    public BeanBasedSelectBuilder<?> and(Object capture, Object... others) {
+	getExpressions().addLast(COMMA);
+	getExpressions().addAll(selection(capture, others).getExpressions());
+	return this;
+    }
+
+    public BeanBasedSelectBuilder<?> and(FunctionExpression<?> expression, FunctionExpression<?>... others) {
+	getExpressions().addLast(COMMA);
+	getExpressions().addAll(selection(expression, others).getExpressions());
 	return this;
     }
 }

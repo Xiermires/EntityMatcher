@@ -100,8 +100,8 @@ public class Expressions {
      * <p>
      * i.e. {@code orderBy("foo", "bar")} translates as {@code ORDER BY ?.foo, ?.bar}.
      */
-    public static <T> OrderByBuilder<T> orderBy(FunctionExpression<T> function, FunctionExpression<?>... others) {
-	final OrderByBuilder<T> builder = new OrderByBuilder<>(function.getType(), null);
+    public static OrderByBuilder<?> orderBy(FunctionExpression<?> function, FunctionExpression<?>... others) {
+	final OrderByBuilder<?> builder = new OrderByBuilder<>(function.getType(), null);
 	addCommaSeparatedExpressions(builder, function, others);
 	return builder;
     }

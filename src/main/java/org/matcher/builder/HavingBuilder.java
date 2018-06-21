@@ -21,15 +21,6 @@
  *******************************************************************************/
 package org.matcher.builder;
 
-import static org.matcher.expression.Expressions.AND;
-
-import org.matcher.expression.ConstantExpression;
-import org.matcher.expression.Expression;
-import org.matcher.expression.FunctionExpression;
-import org.matcher.expression.OrphanExpression;
-import org.matcher.expression.TypedExpression;
-import org.matcher.name.NameBasedWhereBuilder;
-
 public class HavingBuilder<T> extends GroupByBuilder<T> {
 
     public HavingBuilder(Class<T> leadingReferent, String leadingProperty) {
@@ -49,21 +40,5 @@ public class HavingBuilder<T> extends GroupByBuilder<T> {
     @Override
     protected String getPrefix() {
 	return "HAVING ";
-    }
-
-    public HavingBuilder<T> and(FunctionExpression<T> function, NameBasedWhereBuilder qualifier) {
-	final TypedExpression<T> expression = createHavingExpression(function, qualifier);
-	expression.getChildren().addFirst(new ConstantExpression(AND));
-	getExpressions().add(expression);
-	return this;
-    }
-
-    static <T> TypedExpression<T> createHavingExpression(FunctionExpression<T> function, NameBasedWhereBuilder qualifier) {
-	final TypedExpression<T> expression = new TypedExpression<T>(function.getType());
-	expression.addChild(function);
-	for (Expression qualifierExpression : qualifier.getExpressions()) {
-	    expression.addChild(new OrphanExpression(qualifierExpression));
-	}
-	return expression;
     }
 }

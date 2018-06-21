@@ -21,6 +21,8 @@
  *******************************************************************************/
 package org.matcher.bean;
 
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.either;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -28,14 +30,14 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.lessThan;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.nullValue;
-import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertThat;
-import static org.matcher.expression.Expressions.closure;
-import static org.matcher.expression.Expressions.not;
+import static org.matcher.bean.BeanBasedExpressions.avg;
 import static org.matcher.bean.BeanBasedExpressions.between;
 import static org.matcher.bean.BeanBasedExpressions.count;
 import static org.matcher.bean.BeanBasedExpressions.distinct;
+import static org.matcher.bean.BeanBasedExpressions.endsWith;
 import static org.matcher.bean.BeanBasedExpressions.eq;
+import static org.matcher.bean.BeanBasedExpressions.groupBy;
 import static org.matcher.bean.BeanBasedExpressions.gt;
 import static org.matcher.bean.BeanBasedExpressions.in;
 import static org.matcher.bean.BeanBasedExpressions.like;
@@ -43,7 +45,13 @@ import static org.matcher.bean.BeanBasedExpressions.lt;
 import static org.matcher.bean.BeanBasedExpressions.matching;
 import static org.matcher.bean.BeanBasedExpressions.max;
 import static org.matcher.bean.BeanBasedExpressions.min;
+import static org.matcher.bean.BeanBasedExpressions.orderBy;
 import static org.matcher.bean.BeanBasedExpressions.selection;
+import static org.matcher.bean.BeanBasedExpressions.startsWith;
+import static org.matcher.bean.BeanBasedExpressions.sum;
+import static org.matcher.expression.Expressions.closure;
+import static org.matcher.expression.Expressions.count;
+import static org.matcher.expression.Expressions.not;
 
 import java.util.Arrays;
 import java.util.List;
@@ -97,7 +105,7 @@ public class BeanBasedEntityMatcherTest {
     @Test
     public void testEq() {
 	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
-	final TestClass testee = matcher.find(TestClass.class, matching(tc.getBar(), eq("Hello")));
+	final TestClass testee = matcher.findUnique(TestClass.class, matching(tc.getBar(), eq("Hello")));
 	assertThat(testee, is(Matchers.not(nullValue())));
 	assertThat(testee.getBar(), is("Hello"));
     }
@@ -105,7 +113,7 @@ public class BeanBasedEntityMatcherTest {
     @Test
     public void testEqNull() {
 	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
-	final TestClass testee = matcher.find(TestClass.class, matching(tc.getBar(), eq(null)));
+	final TestClass testee = matcher.findUnique(TestClass.class, matching(tc.getBar(), eq(null)));
 	assertThat(testee, is(Matchers.not(nullValue())));
 	assertThat(testee.getBar(), is(nullValue()));
     }
@@ -123,9 +131,25 @@ public class BeanBasedEntityMatcherTest {
     @Test
     public void testLike() {
 	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
-	final TestClass testee = matcher.find(TestClass.class, matching(tc.getBar(), like("Hell%")));
+	final TestClass testee = matcher.findUnique(TestClass.class, matching(tc.getBar(), like("Hell%")));
 	assertThat(testee, is(Matchers.not(nullValue())));
-	assertThat(testee.getBar(), startsWith("Hell"));
+	assertThat(testee.getBar(), Matchers.startsWith("Hell"));
+    }
+    
+    @Test
+    public void testStartsWith() {
+	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
+	final TestClass testee = matcher.findUnique(TestClass.class, matching(tc.getBar(), startsWith("Hell")));
+	assertThat(testee, is(Matchers.not(nullValue())));
+	assertThat(testee.getBar(), Matchers.startsWith("Hell"));
+    }
+
+    @Test
+    public void testEndsWith() {
+	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
+	final TestClass testee = matcher.findUnique(TestClass.class, matching(tc.getBar(), endsWith("ello")));
+	assertThat(testee, is(Matchers.not(nullValue())));
+	assertThat(testee.getBar(), Matchers.endsWith("ello"));
     }
 
     @Test
@@ -134,7 +158,7 @@ public class BeanBasedEntityMatcherTest {
 	final List<TestClass> testee = matcher.findAny(TestClass.class, matching(tc.getBar(), not(like("Hell%"))));
 	assertThat(testee.size(), is(2));
 	for (TestClass t : testee)
-	    assertThat(t.getBar(), Matchers.not(startsWith("Hell")));
+	    assertThat(t.getBar(), Matchers.not(Matchers.startsWith("Hell")));
     }
 
     @Test
@@ -160,7 +184,7 @@ public class BeanBasedEntityMatcherTest {
     @Test
     public void testAndSameTableDifferentProperties() {
 	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
-	final TestClass testee = matcher.find(TestClass.class,
+	final TestClass testee = matcher.findUnique(TestClass.class,
 		matching(tc.getFoo(), lt(4)).and(tc.getBar(), eq("Bye")));
 	assertThat(testee.getFoo(), is(lessThan(4)));
 	assertThat(testee.getBar(), is("Bye"));
@@ -198,7 +222,7 @@ public class BeanBasedEntityMatcherTest {
     public void testMultipleJoin() {
 	final TestJoin tj = BeanBasedMatcher.matcher(TestJoin.class);
 	final TestOther to = BeanBasedMatcher.matcher(TestOther.class);
-	final TestClass join = matcher.find(TestClass.class, matching(tj.getBar()).and(matching(to.getBar())));
+	final TestClass join = matcher.findUnique(TestClass.class, matching(tj.getBar()).and(matching(to.getBar())));
 	assertThat(join, is(Matchers.not(nullValue())));
     }
 
@@ -245,7 +269,7 @@ public class BeanBasedEntityMatcherTest {
     @Test
     public void testSelectSingleProperty() {
 	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
-	final List<Integer> foos = matcher.find(Integer.class, selection(tc.getFoo()),
+	final List<Integer> foos = matcher.findAny(Integer.class, selection(tc.getFoo()),
 		matching(tc.getFoo(), between(3, 5)));
 	assertThat(foos, is(Matchers.not(nullValue())));
 	for (Integer foo : foos) {
@@ -283,6 +307,22 @@ public class BeanBasedEntityMatcherTest {
 	assertThat(max, is(Matchers.not(nullValue())));
 	assertThat(max, is(5));
     }
+    
+    @Test
+    public void testAvg() {
+	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
+	final Double avg = matcher.findUnique(Double.class, avg(tc.getFoo()));
+	assertThat(avg, is(Matchers.not(nullValue())));
+	assertThat(avg, is(4d));
+    }
+
+    @Test
+    public void testSum() {
+	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
+	final Long sum = matcher.findUnique(Long.class, sum(tc.getFoo()));
+	assertThat(sum, is(Matchers.not(nullValue())));
+	assertThat(sum, is(16l));
+    }
 
     @Test
     public void testCount() {
@@ -302,10 +342,70 @@ public class BeanBasedEntityMatcherTest {
     }
 
     @Test
+    public void testDistinctList() {
+	final TestOther to = BeanBasedMatcher.matcher(TestOther.class);
+	final List<String> bars = matcher.findAny(String.class, distinct(to.getBar()));
+	assertThat(bars.size(), is(2));
+	assertThat(bars, containsInAnyOrder("Snake", "Hello"));
+    }
+    
+    @Test
     public void testCountDistinct() {
 	final TestOther to = BeanBasedMatcher.matcher(TestOther.class);
 	final Long count = matcher.findUnique(Long.class, //
 		count(distinct(to.getBar())), matching(to.getBar(), eq("Snake")));
 	assertThat(count, is(1l));
+    }
+    
+    @Test
+    public void testGroupBy() {
+	final TestOther to = BeanBasedMatcher.matcher(TestOther.class);
+	final List<Object[]> tos = matcher.findAny(Object[].class, selection(to.getBar()).and(count(to.getBar())),
+		groupBy(to.getBar()));
+	assertThat(tos.size(), is(2));
+    }
+
+    @Test
+    public void testOrderBy() {
+	final TestClass tc = BeanBasedMatcher.matcher(TestClass.class);
+	final List<TestClass> tcs = matcher.findAny(TestClass.class, orderBy(tc.getFoo()));
+	assertThat(tcs.size(), is(4));
+	int min = Integer.MIN_VALUE;
+	for (TestClass t : tcs) {
+	    min = Math.min(t.getFoo(), min);
+	    assertThat(min, is(lessThanOrEqualTo(t.getFoo())));
+	}
+    }
+
+    @Test
+    public void testOrderByFunction() {
+	final TestOther to = BeanBasedMatcher.matcher(TestOther.class);
+	final List<String> tos = matcher.findAny(String.class, selection(to.getBar()),
+		groupBy(to.getBar()).orderBy(count(to.getBar())));
+	assertThat(tos.size(), is(2));
+	assertThat(tos, contains("Hello", "Snake"));
+    }
+
+    @Test
+    public void testHavingCount() {
+	final TestOther to = BeanBasedMatcher.matcher(TestOther.class);
+	final String testee = matcher.findUnique(String.class, //
+		selection(to.getBar()), //
+		groupBy(to.getBar()). //
+			having(count(to.getBar()), gt(1L)));
+	assertThat(testee, is("Snake"));
+    }
+
+    @Test
+    // FIXME
+    public void testMultipleHaving() {
+	final TestOther to = BeanBasedMatcher.matcher(TestOther.class);
+	final List<Object[]> testee = matcher.findAny(Object[].class, //
+		selection(to.getBar()).and(sum(to.getFoo())), //
+		groupBy(to.getBar(), to.getFoo()).//
+			having(count(to.getBar()), gt(0L)).//
+			and(sum(to.getFoo()), lt(20L)));
+
+	assertThat(testee.size(), is(4));
     }
 }

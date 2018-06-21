@@ -23,8 +23,6 @@ package org.matcher.builder;
 
 import org.matcher.expression.Expressions;
 import org.matcher.expression.FunctionExpression;
-import org.matcher.expression.TypedExpression;
-import org.matcher.name.NameBasedWhereBuilder;
 
 public class GroupByBuilder<T> extends TypedClauseBuilder<T, GroupByBuilder<T>> {
 
@@ -47,21 +45,8 @@ public class GroupByBuilder<T> extends TypedClauseBuilder<T, GroupByBuilder<T>> 
 	return "GROUP BY ";
     }
 
-    /**
-     * A having expression, where each property belongs to the leading query referent.
-     * <p>
-     * i.e. {@code having(count("foo"), gt(2)} translates as {@code HAVING COUNT(?.foo) > 2}.
-     */
-    public HavingBuilder<T> having(FunctionExpression<T> function, NameBasedWhereBuilder qualifier) {
-	final TypedExpression<T> expression = HavingBuilder.createHavingExpression(function, qualifier);
-	final HavingBuilder<T> builder = new HavingBuilder<>(expression.getType(), null);
-	builder.getExpressions().add(expression);
-	builder.setPreviousClause(this);
-	return builder;
-    }
-
-    public OrderByBuilder<T> orderBy(FunctionExpression<T> function, FunctionExpression<?>... others) {
-	final OrderByBuilder<T> builder = Expressions.orderBy(function, others);
+    public OrderByBuilder<?> orderBy(FunctionExpression<?> function, FunctionExpression<?>... others) {
+	final OrderByBuilder<?> builder = Expressions.orderBy(function, others);
 	builder.setPreviousClause(this);
 	return builder;
     }

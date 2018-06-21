@@ -65,11 +65,11 @@ public abstract class ClauseBuilder<Builder extends ClauseBuilder<Builder>> {
 	return closureOnMerge;
     }
 
-    protected void setPreviousClause(ClauseBuilder<?> previousClause) {
+    public void setPreviousClause(ClauseBuilder<?> previousClause) {
 	this.previousClause = previousClause;
     }
 
-    protected void setNextClause(ClauseBuilder<?> nextClause) {
+    public void setNextClause(ClauseBuilder<?> nextClause) {
 	this.nextClause = nextClause;
     }
 

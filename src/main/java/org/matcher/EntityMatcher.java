@@ -115,7 +115,7 @@ public class EntityMatcher implements EntityManager {
      * <p>
      * Equivalent to call {@link Query#getSingleResult()} on the built query.
      */
-    public <T> T find(Class<T> returnType, ClauseBuilder<?> clauseBuilder) {
+    public <T> T findUnique(Class<T> returnType, ClauseBuilder<?> clauseBuilder) {
 	clauseBuilder.overwriteNullReferenceAndProperties(returnType, null);
 	return createTypedQuery(returnType, //
 		selection(new TypedExpression<T>(returnType)), //
@@ -152,7 +152,7 @@ public class EntityMatcher implements EntityManager {
      * <p>
      * Equivalent to call {@link Query#getResultList()} on the built query.
      */
-    public <T> List<T> find(Class<T> clazz) {
+    public <T> List<T> findAny(Class<T> clazz) {
 	return createTypedQuery(clazz, selection(clazz), TransparentBuilder.INSTANCE, TransparentBuilder.INSTANCE)
 		.getResultList();
     }
@@ -162,7 +162,7 @@ public class EntityMatcher implements EntityManager {
      * <p>
      * Equivalent to call {@link Query#getResultList()} on the built query.
      */
-    public <T> List<T> find(Class<T> returnType, FunctionExpression<?> functionExpression) {
+    public <T> List<T> findAny(Class<T> returnType, FunctionExpression<?> functionExpression) {
 	return createTypedQuery(//
 		returnType, //
 		selection(functionExpression), //
@@ -175,7 +175,7 @@ public class EntityMatcher implements EntityManager {
      * <p>
      * Equivalent to call {@link Query#getResultList()} on the built query.
      */
-    public <T> List<T> find(Class<T> returnType, SelectBuilder<?, ?> selectBuilder) {
+    public <T> List<T> findAny(Class<T> returnType, SelectBuilder<?, ?> selectBuilder) {
 	return createTypedQuery(//
 		returnType, //
 		selectBuilder, //
@@ -201,7 +201,7 @@ public class EntityMatcher implements EntityManager {
      * <p>
      * Equivalent to call {@link Query#getResultList()} on the built query.
      */
-    public <T> List<T> find(Class<T> returnType, TypedExpression<?> typedExpression, ClauseBuilder<?> clauseBuilder) {
+    public <T> List<T> findAny(Class<T> returnType, TypedExpression<?> typedExpression, ClauseBuilder<?> clauseBuilder) {
 	return createTypedQuery( //
 		returnType, //
 		selection(typedExpression.getType()), //
@@ -214,7 +214,7 @@ public class EntityMatcher implements EntityManager {
      * <p>
      * Equivalent to call {@link Query#getResultList()} on the built query.
      */
-    public <T> List<T> find(Class<T> returnType, SelectBuilder<?, ?> selectBuilder, ClauseBuilder<?> clauseBuilder) {
+    public <T> List<T> findAny(Class<T> returnType, SelectBuilder<?, ?> selectBuilder, ClauseBuilder<?> clauseBuilder) {
 	return createTypedQuery(//
 		returnType, //
 		selectBuilder, //
