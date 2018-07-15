@@ -23,6 +23,8 @@ package org.matcher.expression;
 
 import static org.matcher.builder.BuilderUtils.aliasPlusColumn;
 
+import java.util.List;
+
 import javax.persistence.Query;
 
 import org.matcher.parameter.ParameterBinding;
@@ -33,6 +35,7 @@ import org.matcher.parameter.ParameterBinding;
 public class JoinQualifierExpression extends QualifierExpression<String> {
 
     private static final ParameterBinding transparentBindings = new ParameterBinding() {
+	
 	@Override
 	public String createParam(Object o) {
 	    return (String) o;
@@ -41,6 +44,11 @@ public class JoinQualifierExpression extends QualifierExpression<String> {
 	@Override
 	public void resolveParams(String rawQuery, Query query) {
 	    throw new UnsupportedOperationException("Cannot bind.");
+	}
+
+	@Override
+	public List<Object> getBindings() {
+	    throw new UnsupportedOperationException("Not a binding.");
 	}
     };
 

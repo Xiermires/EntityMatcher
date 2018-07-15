@@ -50,7 +50,6 @@ import static org.matcher.bean.BeanBasedExpressions.selection;
 import static org.matcher.bean.BeanBasedExpressions.startsWith;
 import static org.matcher.bean.BeanBasedExpressions.sum;
 import static org.matcher.expression.Expressions.closure;
-import static org.matcher.expression.Expressions.count;
 import static org.matcher.expression.Expressions.not;
 
 import java.util.Arrays;

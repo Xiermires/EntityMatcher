@@ -60,4 +60,9 @@ public class ParameterBindingImpl implements ParameterBinding {
 	    query.setParameter(Integer.valueOf(key), value);
 	}
     }
+
+    @Override
+    public List<Object> getBindings() {
+	return params;
+    }
 }

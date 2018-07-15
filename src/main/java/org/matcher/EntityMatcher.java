@@ -65,19 +65,6 @@ import org.matcher.parameter.ParameterBindingImpl;
 @SuppressWarnings("rawtypes")
 public class EntityMatcher implements EntityManager {
 
-    private static <T> ClauseBuilder from(Collection<Class<?>> referents) {
-	final FromBuilder builder = new FromBuilder();
-	final Iterator<Class<?>> it = referents.iterator();
-	if (it.hasNext()) {
-	    builder.getExpressions().add(new FromExpression(it.next()));
-	    while (it.hasNext()) {
-		builder.getExpressions().add(COMMA);
-		builder.getExpressions().add(new FromExpression(it.next()));
-	    }
-	}
-	return builder;
-    }
-
     private final EntityManager delegate;
 
     public EntityMatcher(EntityManager delegate) {
@@ -242,6 +229,17 @@ public class EntityMatcher implements EntityManager {
 	final ClauseBuilder<?> fromBuilder = from(referents);
 
 	final ParameterBinding bindings = new ParameterBindingImpl();
+	final String queryTxt = getQueryTxt(selectBuilder, whereBuilder, afterWhereBuilder, fromBuilder, bindings);
+	return createQuery(queryTxt, bindings, returnType);
+    }
+
+    private String getQueryTxt(//
+	    ClauseBuilder<?> selectBuilder, //
+	    ClauseBuilder<?> whereBuilder, //
+	    ClauseBuilder<?> afterWhereBuilder, //
+	    final ClauseBuilder<?> fromBuilder, //
+	    final ParameterBinding bindings) {
+
 	final StringBuilder queryBuilder = new StringBuilder();
 	queryBuilder.append(selectBuilder.build(bindings));
 	queryBuilder.append(" ");
@@ -252,12 +250,20 @@ public class EntityMatcher implements EntityManager {
 	queryBuilder.append(afterWhereBuilder.build(bindings));
 
 	final String queryTxt = queryBuilder.toString().replaceAll("\\s+", " ").trim();
+	return queryTxt;
+    }
+
+    /**
+     * Subclasses of this entity matcher can provide their own {@link TypedQuery} implementation, for instance for
+     * caching purposes.
+     */
+    protected <T> TypedQuery<T> createQuery(String queryTxt, ParameterBinding bindings, Class<T> returnType) {
 	final TypedQuery<T> query = delegate.createQuery(queryTxt, returnType);
 	bindings.resolveParams(queryTxt, query);
 	return query;
     }
 
-    public Set<Class<?>> getReferents(ClauseBuilder<?>... builders) {
+    private Set<Class<?>> getReferents(ClauseBuilder<?>... builders) {
 	final Set<Class<?>> referents = new HashSet<>();
 	for (ClauseBuilder<?> builder : builders) {
 	    if (builder != null) {
@@ -522,5 +528,18 @@ public class EntityMatcher implements EntityManager {
     @Override
     public <T> T unwrap(Class<T> arg0) {
 	return delegate.unwrap(arg0);
+    }
+
+    private static <T> ClauseBuilder from(Collection<Class<?>> referents) {
+	final FromBuilder builder = new FromBuilder();
+	final Iterator<Class<?>> it = referents.iterator();
+	if (it.hasNext()) {
+	    builder.getExpressions().add(new FromExpression(it.next()));
+	    while (it.hasNext()) {
+		builder.getExpressions().add(COMMA);
+		builder.getExpressions().add(new FromExpression(it.next()));
+	    }
+	}
+	return builder;
     }
 }

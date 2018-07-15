@@ -21,9 +21,12 @@
  *******************************************************************************/
 package org.matcher.parameter;
 
+import java.util.List;
+
 import javax.persistence.Query;
 
 public interface ParameterBinding {
+
     /**
      * Binds the object as the next parameter of the query.
      */
@@ -33,4 +36,9 @@ public interface ParameterBinding {
      * Sets the bound parameters into the query.
      */
     void resolveParams(String rawQuery, Query query);
+
+    /**
+     * Returns all currently bound parameters in order.
+     */
+    List<Object> getBindings();
 }
